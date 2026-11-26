@@ -23,10 +23,11 @@ import java.util.UUID;
  * Invisible-to-logic, client-rendered cube that visually follows a player.
  *
  * <p>The real block light is still placed by {@code LightFollower}; this entity only
- * draws a rolling cube. It waits until the player is a few blocks away, then flies
+ * draws a rolling cube. It waits until the player has walked a few blocks, then flies
  * toward the player at a bounded speed so it never sits at the player's feet and
  * blocks interactions. When it stops chasing, gravity pulls it back to the ground.
- * Rotation is accumulated from its own movement.</p>
+ * Chasing is triggered by the player's own travel, not by the distance to the entity,
+ * so falling cannot re-trigger it. Rotation is accumulated from its own movement.</p>
  */
 public class RollingLightEntity extends Entity {
     private static final double GRAVITY = 0.08D;
@@ -38,6 +39,8 @@ public class RollingLightEntity extends Entity {
     private final Quaternionf rotation = new Quaternionf();
     private UUID owner;
     private boolean following;
+    private Vec3 lastPlayerTarget;
+    private double travelSinceIdle;
 
     public RollingLightEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -63,9 +66,11 @@ public class RollingLightEntity extends Entity {
     /**
      * Called every server tick by {@code LightFollower}.
      *
-     * <p>The entity stays still until the player is {@code startDistance} blocks away, then
-     * flies toward the player at {@code speed} blocks per second. It stops once it is within
-     * {@code stopDistance}, so it does not sit at the player's feet and block interactions.</p>
+     * <p>The entity stays still until the player has travelled {@code startDistance} blocks,
+     * then flies toward the player at {@code speed} blocks per second. It stops once it is
+     * within {@code stopDistance}, so it does not sit at the player's feet and block
+     * interactions. Only the player's movement can start a chase: gravity/falling never
+     * re-locks the entity.</p>
      */
     public void follow(ServerPlayer player, int yOffset, boolean animate,
                        double startDistance, double stopDistance, double speed) {
@@ -74,11 +79,18 @@ public class RollingLightEntity extends Entity {
         double distance = current.distanceTo(target);
         boolean wasFollowing = this.following;
 
-        if (!this.following && distance >= startDistance) {
+        // The target always has the same yOffset, so this is the player's actual movement.
+        if (this.lastPlayerTarget != null && !this.following) {
+            this.travelSinceIdle += this.lastPlayerTarget.distanceTo(target);
+        }
+        this.lastPlayerTarget = target;
+
+        if (!this.following && this.travelSinceIdle >= startDistance && distance > stopDistance) {
             this.following = true;
         }
         if (this.following && distance <= stopDistance) {
             this.following = false;
+            this.travelSinceIdle = 0.0D;
         }
 
         double stepLength = 0.0D;
@@ -113,6 +125,8 @@ public class RollingLightEntity extends Entity {
 
     public void stopFollowing() {
         this.following = false;
+        this.travelSinceIdle = 0.0D;
+        this.lastPlayerTarget = null;
         this.setDeltaMovement(Vec3.ZERO);
     }
 
