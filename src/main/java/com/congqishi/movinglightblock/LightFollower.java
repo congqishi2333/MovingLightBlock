@@ -65,6 +65,11 @@ public final class LightFollower {
                 continue;
             }
 
+            // Hard leash: never leave the cube far away, and rescue it if it spawns in a wall.
+            if (entity.distanceTo(target) > Config.TELEPORT_DISTANCE.get() || entity.isInsideSolid()) {
+                entity.teleportTo(findTeleportPos(level, target));
+            }
+
             double startDistance = Config.FOLLOW_DISTANCE.get();
             double stopDistance = Math.min(Config.STOP_DISTANCE.get(), startDistance - 0.1D);
             entity.follow(target, Config.Y_OFFSET.get(), Config.ANIMATION.get(),
@@ -116,6 +121,45 @@ public final class LightFollower {
         return null;
     }
 
+    /**
+     * Finds a safe spot beside the player, kept away from the player's feet so the hidden
+     * light block cannot get in the way. Never returns a solid block position.
+     */
+    public static Vec3 findTeleportPos(ServerLevel level, ServerPlayer player) {
+        double distance = Config.FOLLOW_DISTANCE.get();
+        Vec3 look = player.getLookAngle();
+        double[][] directions = {
+                {-look.x, -look.z},
+                {look.z, -look.x},
+                {-look.z, look.x},
+                {look.x, look.z}
+        };
+        int baseY = player.blockPosition().getY() + Config.Y_OFFSET.get();
+
+        for (double[] direction : directions) {
+            double length = Math.hypot(direction[0], direction[1]);
+            if (length < 1.0E-4D) {
+                continue;
+            }
+            double dx = direction[0] / length;
+            double dz = direction[1] / length;
+            int offsetX = (int) Math.round(dx * distance);
+            int offsetZ = (int) Math.round(dz * distance);
+
+            for (int dy : new int[] {0, 1, -1, 2, -2}) {
+                BlockPos pos = player.blockPosition().offset(offsetX, dy, offsetZ);
+                int y = baseY + dy;
+                pos = new BlockPos(pos.getX(), y, pos.getZ());
+                BlockState state = level.getBlockState(pos);
+                if (state.canBeReplaced() && !state.is(MovingLightBlockMod.MOVING_LIGHT.get())) {
+                    return new Vec3(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D);
+                }
+            }
+        }
+
+        return new Vec3(player.getX(), player.getY() + 1.0D, player.getZ());
+    }
+
     public static void discardOwned(UUID playerId) {
         List<UUID> toRemove = new ArrayList<>();
         for (Map.Entry<UUID, RollingLightEntity> entry : ENTITIES.entrySet()) {
@@ -150,21 +194,7 @@ public final class LightFollower {
 
             RollingLightEntity replacement = ModEntities.ROLLING_LIGHT.get().create(player.level());
             if (replacement != null) {
-                Vec3 look = player.getLookAngle();
-                double backX = -look.x;
-                double backZ = -look.z;
-                double length = Math.hypot(backX, backZ);
-                if (length < 1.0E-4D) {
-                    backX = 1.0D;
-                    backZ = 0.0D;
-                } else {
-                    backX /= length;
-                    backZ /= length;
-                }
-                double distance = Config.FOLLOW_DISTANCE.get();
-                replacement.setPos(player.getX() + backX * distance,
-                        player.getY() + Config.Y_OFFSET.get(),
-                        player.getZ() + backZ * distance);
+                replacement.setPos(findTeleportPos((ServerLevel) player.level(), player));
                 replacement.setOwner(player.getUUID());
                 player.level().addFreshEntity(replacement);
                 register(replacement);

@@ -130,6 +130,22 @@ public class RollingLightEntity extends Entity {
         this.setDeltaMovement(Vec3.ZERO);
     }
 
+    /** Called when the entity is too far away or has ended up inside a solid block. */
+    public void teleportTo(Vec3 position) {
+        this.setPos(position);
+        this.setDeltaMovement(Vec3.ZERO);
+        this.following = false;
+        this.travelSinceIdle = 0.0D;
+        this.lastPlayerTarget = null;
+    }
+
+    /** True when the cube's own block position is inside a solid (excluding our hidden light block). */
+    public boolean isInsideSolid() {
+        BlockPos pos = this.blockPosition();
+        BlockState state = this.level().getBlockState(pos);
+        return !state.canBeReplaced() && !state.is(com.congqishi.movinglightblock.MovingLightBlockMod.MOVING_LIGHT.get());
+    }
+
     public Quaternionf getRenderRotation() {
         return this.entityData.get(ROTATION);
     }
@@ -161,7 +177,10 @@ public class RollingLightEntity extends Entity {
         BlockPos.MutableBlockPos probe = new BlockPos.MutableBlockPos();
         int x = Mth.floor(this.getX());
         int z = Mth.floor(this.getZ());
-        for (int y = Mth.floor(this.getY()); y >= level.getMinBuildHeight(); y--) {
+
+        // Start below the cube. Scanning its own cell would lift it through walls
+        // whenever it spawned inside a solid block.
+        for (int y = Mth.floor(this.getY()) - 1; y >= level.getMinBuildHeight(); y--) {
             probe.set(x, y, z);
             BlockState state = level.getBlockState(probe);
             if (!state.canBeReplaced()) {

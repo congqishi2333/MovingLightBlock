@@ -15,6 +15,7 @@ public final class Config {
     public static final ModConfigSpec.DoubleValue FOLLOW_DISTANCE;
     public static final ModConfigSpec.DoubleValue STOP_DISTANCE;
     public static final ModConfigSpec.DoubleValue CHASE_SPEED;
+    public static final ModConfigSpec.DoubleValue TELEPORT_DISTANCE;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -52,6 +53,11 @@ public final class Config {
                 .comment("Chase speed in blocks per second. Default 5.6 is roughly sprint speed.",
                          "The entity can fly, so it follows vertically as well.")
                 .defineInRange("chaseSpeed", 5.6D, 0.1D, 20.0D);
+
+        TELEPORT_DISTANCE = builder
+                .comment("If the entity ends up farther than this from its player, it is moved",
+                         "back next to the player instead of being left behind or flying off.")
+                .defineInRange("teleportDistance", 12.0D, 4.0D, 128.0D);
 
         builder.pop();
         SPEC = builder.build();
