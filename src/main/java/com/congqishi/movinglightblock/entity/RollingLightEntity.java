@@ -8,10 +8,13 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.Vec3;
 import org.joml.AxisAngle4f;
 import org.joml.Quaternionf;
@@ -139,11 +142,57 @@ public class RollingLightEntity extends Entity {
         this.lastPlayerTarget = null;
     }
 
-    /** True when the cube's own block position is inside a solid (excluding our hidden light block). */
+    /**
+     * True only when the cube's centre is buried in a full solid block. Damage/utility
+     * blocks such as cactus, magma blocks or modded spikes are not counted here, so standing
+     * on them must not trigger a teleport.
+     */
     public boolean isInsideSolid() {
-        BlockPos pos = this.blockPosition();
+        BlockPos pos = BlockPos.containing(this.getX(), this.getY() + 0.5D, this.getZ());
         BlockState state = this.level().getBlockState(pos);
-        return !state.canBeReplaced() && !state.is(com.congqishi.movinglightblock.MovingLightBlockMod.MOVING_LIGHT.get());
+        return state.isSuffocating(this.level(), pos)
+                && !state.is(com.congqishi.movinglightblock.MovingLightBlockMod.MOVING_LIGHT.get());
+    }
+
+    // The cube must never be hurt, pushed, ignited or triggered by any block/entity path.
+    @Override
+    public boolean hurt(DamageSource source, float amount) {
+        return false;
+    }
+
+    @Override
+    public boolean isInvulnerableTo(DamageSource source) {
+        return true;
+    }
+
+    @Override
+    public boolean fireImmune() {
+        return true;
+    }
+
+    @Override
+    public boolean ignoreExplosion(Explosion explosion) {
+        return true;
+    }
+
+    @Override
+    public boolean isIgnoringBlockTriggers() {
+        return true;
+    }
+
+    @Override
+    public PushReaction getPistonPushReaction() {
+        return PushReaction.IGNORE;
+    }
+
+    @Override
+    public boolean isPushedByFluid() {
+        return false;
+    }
+
+    /** Skips magma/cactus/fire/entityInside effects entirely. */
+    @Override
+    protected void checkInsideBlocks() {
     }
 
     public Quaternionf getRenderRotation() {
