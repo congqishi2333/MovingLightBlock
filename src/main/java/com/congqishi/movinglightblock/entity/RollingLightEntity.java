@@ -14,6 +14,8 @@ import org.joml.AxisAngle4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
+import java.util.UUID;
+
 /**
  * Invisible-to-logic, client-rendered cube that visually follows a player.
  *
@@ -27,6 +29,7 @@ public class RollingLightEntity extends Entity {
             SynchedEntityData.defineId(RollingLightEntity.class, EntityDataSerializers.QUATERNION);
 
     private final Quaternionf rotation = new Quaternionf();
+    private UUID owner;
 
     public RollingLightEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -40,6 +43,14 @@ public class RollingLightEntity extends Entity {
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         builder.define(ROTATION, new Quaternionf());
+    }
+
+    public void setOwner(UUID owner) {
+        this.owner = owner;
+    }
+
+    public UUID getOwner() {
+        return this.owner;
     }
 
     /**

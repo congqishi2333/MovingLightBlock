@@ -1,5 +1,6 @@
 package com.congqishi.movinglightblock;
 
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -14,6 +15,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.registries.DeferredBlock;
+import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 @Mod(MovingLightBlockMod.MODID)
@@ -21,6 +23,7 @@ public class MovingLightBlockMod {
     public static final String MODID = "movinglightblock";
 
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(MODID);
+    public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(MODID);
 
     /**
      * The block placed at the player's position. It is non-colliding, unbreakable and
@@ -40,29 +43,37 @@ public class MovingLightBlockMod {
                     .noCollission()
                     .strength(Block.INDESTRUCTIBLE, 3600000.0F)));
 
+    /**
+     * Right-click item that summons the entity. It is not a block item: the real light block
+     * is hidden and placed directly by {@link LightFollower}.
+     */
+    public static final DeferredItem<FollowLightItem> MOVING_LIGHT_ITEM =
+            ITEMS.register("moving_light", FollowLightItem::new);
+
     public MovingLightBlockMod(IEventBus modEventBus, ModContainer modContainer) {
         BLOCKS.register(modEventBus);
+        ITEMS.register(modEventBus);
         ModEntities.ENTITIES.register(modEventBus);
 
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
 
         modEventBus.addListener((BuildCreativeModeTabContentsEvent event) -> {
             if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
-                event.accept(MOVING_LIGHT.get());
+                event.accept(MOVING_LIGHT_ITEM.get());
             }
         });
 
         modEventBus.addListener((ModConfigEvent.Reloading event) -> {
             if (event.getConfig().getSpec() == Config.SPEC) {
-                LightFollower.clearAll();
+                LightFollower.clearBlocks();
             }
         });
 
         NeoForge.EVENT_BUS.addListener(LightFollower::onServerTick);
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent event) ->
-                LightFollower.clear(event.getEntity().getUUID()));
+                LightFollower.discardOwned(event.getEntity().getUUID()));
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerChangedDimensionEvent event) ->
-                LightFollower.clear(event.getEntity().getUUID()));
+                LightFollower.relocate((ServerPlayer) event.getEntity()));
         NeoForge.EVENT_BUS.addListener((ServerStoppedEvent event) -> LightFollower.clearAll());
     }
 }

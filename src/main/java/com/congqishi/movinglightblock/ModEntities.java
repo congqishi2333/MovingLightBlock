@@ -18,7 +18,6 @@ public final class ModEntities {
                     .clientTrackingRange(8)
                     .updateInterval(1)
                     .noSave()
-                    .noSummon()
                     .build("movinglightblock:rolling_light"));
 
     private ModEntities() {
