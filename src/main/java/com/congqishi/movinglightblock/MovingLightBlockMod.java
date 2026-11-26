@@ -2,7 +2,6 @@ package com.congqishi.movinglightblock;
 
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -26,13 +25,12 @@ public class MovingLightBlockMod {
     /**
      * The block placed at the player's position. It is non-colliding, unbreakable and
      * emits a configurable light level (vanilla block light, not a shader effect).
+     *
+     * <p>The level is a block-state property, not a config lookup at registration time:
+     * configs are loaded after blocks are registered.</p>
      */
-    public static final DeferredBlock<Block> MOVING_LIGHT = BLOCKS.register("moving_light",
-            () -> new Block(BlockBehaviour.Properties.of()
-                    .noCollission()
-                    .strength(Block.INDESTRUCTIBLE, 3600000.0F)
-                    .sound(SoundType.GLASS)
-                    .lightLevel(state -> Config.LIGHT_LEVEL.get())));
+    public static final DeferredBlock<MovingLightBlock> MOVING_LIGHT = BLOCKS.register("moving_light",
+            MovingLightBlock::new);
 
     /**
      * Render-only block state used by the rolling visual entity. It is never placed in the world.

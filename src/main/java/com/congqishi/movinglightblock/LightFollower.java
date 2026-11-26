@@ -53,7 +53,7 @@ public final class LightFollower {
 
             BlockState oldState = level.getBlockState(target);
             if (!oldState.is(MovingLightBlockMod.MOVING_LIGHT.get())) {
-                level.setBlock(target, MovingLightBlockMod.MOVING_LIGHT.get().defaultBlockState(),
+                level.setBlock(target, MovingLightBlock.stateForLevel(Config.LIGHT_LEVEL.get()),
                         Block.UPDATE_ALL);
                 PLACEMENTS.put(id, new Placement(level, target, oldState));
             }

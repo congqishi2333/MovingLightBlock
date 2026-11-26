@@ -1,7 +1,20 @@
 {
   "variants": {
-    "": {
-      "model": "movinglightblock:block/invisible"
-    }
+    "level=0":  { "model": "movinglightblock:block/invisible" },
+    "level=1":  { "model": "movinglightblock:block/invisible" },
+    "level=2":  { "model": "movinglightblock:block/invisible" },
+    "level=3":  { "model": "movinglightblock:block/invisible" },
+    "level=4":  { "model": "movinglightblock:block/invisible" },
+    "level=5":  { "model": "movinglightblock:block/invisible" },
+    "level=6":  { "model": "movinglightblock:block/invisible" },
+    "level=7":  { "model": "movinglightblock:block/invisible" },
+    "level=8":  { "model": "movinglightblock:block/invisible" },
+    "level=9":  { "model": "movinglightblock:block/invisible" },
+    "level=10": { "model": "movinglightblock:block/invisible" },
+    "level=11": { "model": "movinglightblock:block/invisible" },
+    "level=12": { "model": "movinglightblock:block/invisible" },
+    "level=13": { "model": "movinglightblock:block/invisible" },
+    "level=14": { "model": "movinglightblock:block/invisible" },
+    "level=15": { "model": "movinglightblock:block/invisible" }
   }
 }

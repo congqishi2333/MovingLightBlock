@@ -36,7 +36,7 @@
 .\gradlew.bat build
 ```
 
-产物：`build/libs/movinglightblock-1.1.0.jar`
+产物：`build/libs/movinglightblock-1.1.1.jar`
 
 ## 许可
 
