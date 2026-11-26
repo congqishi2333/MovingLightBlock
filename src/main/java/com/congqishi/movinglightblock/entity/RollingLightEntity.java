@@ -20,9 +20,9 @@ import java.util.UUID;
  * Invisible-to-logic, client-rendered cube that visually follows a player.
  *
  * <p>The real block light is still placed by {@code LightFollower}; this entity only
- * draws a rolling cube at the player's feet. Rotation is accumulated from the
- * player's movement so the cube looks like it is tumbling forward like a companion
- * cube, without any collision or physics.</p>
+ * draws a rolling cube. It waits until the player is a few blocks away, then flies
+ * toward the player at a bounded speed so it never sits at the player's feet and
+ * blocks interactions. Rotation is accumulated from its own movement.</p>
  */
 public class RollingLightEntity extends Entity {
     public static final EntityDataAccessor<Quaternionf> ROTATION =
@@ -30,6 +30,7 @@ public class RollingLightEntity extends Entity {
 
     private final Quaternionf rotation = new Quaternionf();
     private UUID owner;
+    private boolean following;
 
     public RollingLightEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -55,26 +56,41 @@ public class RollingLightEntity extends Entity {
 
     /**
      * Called every server tick by {@code LightFollower}.
+     *
+     * <p>The entity stays still until the player is {@code startDistance} blocks away, then
+     * flies toward the player at {@code speed} blocks per second. It stops once it is within
+     * {@code stopDistance}, so it does not sit at the player's feet and block interactions.</p>
      */
-    public void follow(ServerPlayer player, int yOffset, boolean animate) {
-        Vec3 feet = player.position();
-        double targetX = feet.x;
-        double targetY = feet.y + yOffset;
-        double targetZ = feet.z;
+    public void follow(ServerPlayer player, int yOffset, boolean animate,
+                       double startDistance, double stopDistance, double speed) {
+        Vec3 target = new Vec3(player.getX(), player.getY() + yOffset, player.getZ());
+        Vec3 current = this.position();
+        double distance = current.distanceTo(target);
 
-        double dx = targetX - this.getX();
-        double dz = targetZ - this.getZ();
+        if (!this.following && distance >= startDistance) {
+            this.following = true;
+        }
+        if (this.following && distance <= stopDistance) {
+            this.following = false;
+        }
 
-        this.setPos(targetX, targetY, targetZ);
+        double stepLength = 0.0D;
+        Vec3 delta = target.subtract(current);
+
+        if (this.following && distance > 1.0E-4D) {
+            stepLength = Math.min(Math.max(speed, 0.0D) / 20.0D, distance);
+            this.setPos(current.add(delta.scale(stepLength / distance)));
+        }
 
         if (animate) {
-            double distance = Math.hypot(dx, dz);
-            if (distance > 1.0E-4D) {
+            double horizontal = Math.hypot(delta.x, delta.z);
+            if (stepLength > 1.0E-4D && horizontal > 1.0E-4D) {
+                double horizontalStep = stepLength * horizontal / distance;
                 // A one-block move tips a one-block cube by 90 degrees.
-                float angle = (float) Math.min(distance, 2.0D) * ((float) Math.PI / 2.0F);
-                Vector3f axis = new Vector3f((float) dz, 0.0F, (float) -dx).normalize();
-                Quaternionf delta = new Quaternionf(new AxisAngle4f(angle, axis));
-                this.rotation.premul(delta);
+                float angle = (float) Math.min(horizontalStep, 2.0D) * ((float) Math.PI / 2.0F);
+                Vector3f axis = new Vector3f((float) delta.z, 0.0F, (float) -delta.x).normalize();
+                Quaternionf deltaRotation = new Quaternionf(new AxisAngle4f(angle, axis));
+                this.rotation.premul(deltaRotation);
             }
         } else {
             this.rotation.identity();

@@ -11,6 +11,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Right-click to summon a rolling light entity that follows its owner.
@@ -36,7 +37,8 @@ public final class FollowLightItem extends Item {
         }
 
         BlockPos spawnPos = context.getClickedPos().relative(context.getClickedFace());
-        return spawn(serverLevel, player, spawnPos, context.getItemInHand());
+        Vec3 requested = new Vec3(spawnPos.getX() + 0.5D, spawnPos.getY(), spawnPos.getZ() + 0.5D);
+        return spawn(serverLevel, player, requested, context.getItemInHand());
     }
 
     @Override
@@ -46,19 +48,21 @@ public final class FollowLightItem extends Item {
             return InteractionResultHolder.success(stack);
         }
 
-        InteractionResult result = spawn(serverLevel, player, player.blockPosition().above(), stack);
+        Vec3 requested = new Vec3(player.getX(), player.getY() + Config.Y_OFFSET.get(), player.getZ());
+        InteractionResult result = spawn(serverLevel, player, requested, stack);
         return result == InteractionResult.SUCCESS
                 ? InteractionResultHolder.success(stack)
                 : InteractionResultHolder.pass(stack);
     }
 
-    private InteractionResult spawn(ServerLevel level, Player player, BlockPos pos, ItemStack stack) {
+    private InteractionResult spawn(ServerLevel level, Player player, Vec3 requested, ItemStack stack) {
         RollingLightEntity entity = ModEntities.ROLLING_LIGHT.get().create(level);
         if (entity == null) {
             return InteractionResult.FAIL;
         }
 
-        entity.setPos(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D);
+        Vec3 spawnPos = keepAwayFromPlayer(player, requested);
+        entity.setPos(spawnPos);
         entity.setOwner(player.getUUID());
         level.addFreshEntity(entity);
         LightFollower.register(entity);
@@ -67,5 +71,31 @@ public final class FollowLightItem extends Item {
             stack.shrink(1);
         }
         return InteractionResult.SUCCESS;
+    }
+
+    /** Never summon the cube on top of the player, where its hidden light block would be in the way. */
+    private static Vec3 keepAwayFromPlayer(Player player, Vec3 requested) {
+        double minimum = Config.FOLLOW_DISTANCE.get();
+        double dx = requested.x - player.getX();
+        double dz = requested.z - player.getZ();
+        if (Math.hypot(dx, dz) >= minimum) {
+            return requested;
+        }
+
+        Vec3 look = player.getLookAngle();
+        double backX = -look.x;
+        double backZ = -look.z;
+        double length = Math.hypot(backX, backZ);
+        if (length < 1.0E-4D) {
+            backX = 1.0D;
+            backZ = 0.0D;
+        } else {
+            backX /= length;
+            backZ /= length;
+        }
+
+        return new Vec3(player.getX() + backX * minimum,
+                player.getY() + Config.Y_OFFSET.get(),
+                player.getZ() + backZ * minimum);
     }
 }

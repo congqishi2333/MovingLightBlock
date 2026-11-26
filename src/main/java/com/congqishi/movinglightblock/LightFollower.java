@@ -7,6 +7,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 import java.util.ArrayList;
@@ -62,7 +63,10 @@ public final class LightFollower {
                 continue;
             }
 
-            entity.follow(target, Config.Y_OFFSET.get(), Config.ANIMATION.get());
+            double startDistance = Config.FOLLOW_DISTANCE.get();
+            double stopDistance = Math.min(Config.STOP_DISTANCE.get(), startDistance - 0.1D);
+            entity.follow(target, Config.Y_OFFSET.get(), Config.ANIMATION.get(),
+                    startDistance, stopDistance, Config.CHASE_SPEED.get());
 
             BlockPos targetPos = findTarget(level, entity.blockPosition());
             if (targetPos == null) {
@@ -144,7 +148,21 @@ public final class LightFollower {
 
             RollingLightEntity replacement = ModEntities.ROLLING_LIGHT.get().create(player.level());
             if (replacement != null) {
-                replacement.setPos(player.getX(), player.getY() + Config.Y_OFFSET.get(), player.getZ());
+                Vec3 look = player.getLookAngle();
+                double backX = -look.x;
+                double backZ = -look.z;
+                double length = Math.hypot(backX, backZ);
+                if (length < 1.0E-4D) {
+                    backX = 1.0D;
+                    backZ = 0.0D;
+                } else {
+                    backX /= length;
+                    backZ /= length;
+                }
+                double distance = Config.FOLLOW_DISTANCE.get();
+                replacement.setPos(player.getX() + backX * distance,
+                        player.getY() + Config.Y_OFFSET.get(),
+                        player.getZ() + backZ * distance);
                 replacement.setOwner(player.getUUID());
                 player.level().addFreshEntity(replacement);
                 register(replacement);
