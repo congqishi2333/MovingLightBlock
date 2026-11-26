@@ -55,11 +55,13 @@ public final class LightFollower {
             clearBlock(id);
 
             if (!Config.ENABLED.get()) {
+                entity.stopFollowing();
                 continue;
             }
 
             ServerPlayer target = findFollowTarget(level, entity);
             if (target == null) {
+                entity.stopFollowing();
                 continue;
             }
 

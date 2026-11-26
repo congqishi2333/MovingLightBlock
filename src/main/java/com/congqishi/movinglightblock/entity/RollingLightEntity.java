@@ -1,6 +1,9 @@
 package com.congqishi.movinglightblock.entity;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -22,9 +25,13 @@ import java.util.UUID;
  * <p>The real block light is still placed by {@code LightFollower}; this entity only
  * draws a rolling cube. It waits until the player is a few blocks away, then flies
  * toward the player at a bounded speed so it never sits at the player's feet and
- * blocks interactions. Rotation is accumulated from its own movement.</p>
+ * blocks interactions. When it stops chasing, gravity pulls it back to the ground.
+ * Rotation is accumulated from its own movement.</p>
  */
 public class RollingLightEntity extends Entity {
+    private static final double GRAVITY = 0.08D;
+    private static final double TERMINAL_VELOCITY = 3.9D;
+
     public static final EntityDataAccessor<Quaternionf> ROTATION =
             SynchedEntityData.defineId(RollingLightEntity.class, EntityDataSerializers.QUATERNION);
 
@@ -35,7 +42,6 @@ public class RollingLightEntity extends Entity {
     public RollingLightEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
         this.noPhysics = true;
-        this.setNoGravity(true);
         this.setInvulnerable(true);
         this.setSilent(true);
         this.setPose(Pose.STANDING);
@@ -66,6 +72,7 @@ public class RollingLightEntity extends Entity {
         Vec3 target = new Vec3(player.getX(), player.getY() + yOffset, player.getZ());
         Vec3 current = this.position();
         double distance = current.distanceTo(target);
+        boolean wasFollowing = this.following;
 
         if (!this.following && distance >= startDistance) {
             this.following = true;
@@ -79,7 +86,11 @@ public class RollingLightEntity extends Entity {
 
         if (this.following && distance > 1.0E-4D) {
             stepLength = Math.min(Math.max(speed, 0.0D) / 20.0D, distance);
-            this.setPos(current.add(delta.scale(stepLength / distance)));
+            this.setDeltaMovement(delta.scale(stepLength / distance));
+        } else {
+            // Keep vertical velocity so gravity can continue, but stop drifting sideways.
+            double vertical = wasFollowing && !this.following ? 0.0D : this.getDeltaMovement().y;
+            this.setDeltaMovement(0.0D, vertical, 0.0D);
         }
 
         if (animate) {
@@ -100,14 +111,50 @@ public class RollingLightEntity extends Entity {
         this.entityData.set(ROTATION, new Quaternionf(this.rotation));
     }
 
+    public void stopFollowing() {
+        this.following = false;
+        this.setDeltaMovement(Vec3.ZERO);
+    }
+
     public Quaternionf getRenderRotation() {
         return this.entityData.get(ROTATION);
     }
 
     @Override
     public void tick() {
-        // Position and rotation are driven entirely by LightFollower.
+        Vec3 motion = this.getDeltaMovement();
+        if (this.following) {
+            // Flying: follow() supplies the velocity, including vertical movement.
+            this.setPos(this.position().add(motion));
+        } else {
+            double vertical = Math.max(motion.y - GRAVITY, -TERMINAL_VELOCITY);
+            double nextY = this.getY() + vertical;
+            double ground = groundY();
+            if (nextY <= ground) {
+                nextY = ground;
+                vertical = 0.0D;
+            }
+            this.setPos(this.getX(), nextY, this.getZ());
+            this.setDeltaMovement(0.0D, vertical, 0.0D);
+        }
         super.tick();
+    }
+
+    private double groundY() {
+        if (!(this.level() instanceof net.minecraft.server.level.ServerLevel level)) {
+            return this.getY();
+        }
+        BlockPos.MutableBlockPos probe = new BlockPos.MutableBlockPos();
+        int x = Mth.floor(this.getX());
+        int z = Mth.floor(this.getZ());
+        for (int y = Mth.floor(this.getY()); y >= level.getMinBuildHeight(); y--) {
+            probe.set(x, y, z);
+            BlockState state = level.getBlockState(probe);
+            if (!state.canBeReplaced()) {
+                return y + 1.0D;
+            }
+        }
+        return level.getMinBuildHeight();
     }
 
     @Override
