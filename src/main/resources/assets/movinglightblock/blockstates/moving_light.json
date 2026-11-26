@@ -1,7 +1,7 @@
 {
   "variants": {
     "": {
-      "model": "movinglightblock:block/moving_light"
+      "model": "movinglightblock:block/invisible"
     }
   }
 }

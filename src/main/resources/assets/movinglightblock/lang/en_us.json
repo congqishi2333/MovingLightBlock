@@ -1,4 +1,6 @@
 {
   "block.movinglightblock.moving_light": "Moving Light Block",
+  "block.movinglightblock.moving_light_visual": "Moving Light Block (Visual)",
+  "entity.movinglightblock.rolling_light": "Moving Light Block",
   "item.movinglightblock.moving_light": "Moving Light Block"
 }

@@ -1,4 +1,6 @@
 {
   "block.movinglightblock.moving_light": "跟随光明方块",
+  "block.movinglightblock.moving_light_visual": "跟随光明方块（渲染用）",
+  "entity.movinglightblock.rolling_light": "跟随光明方块",
   "item.movinglightblock.moving_light": "跟随光明方块"
 }

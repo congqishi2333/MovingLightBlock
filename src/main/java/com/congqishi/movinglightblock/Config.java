@@ -9,6 +9,7 @@ public final class Config {
     public static final ModConfigSpec SPEC;
 
     public static final ModConfigSpec.BooleanValue ENABLED;
+    public static final ModConfigSpec.BooleanValue ANIMATION;
     public static final ModConfigSpec.IntValue LIGHT_LEVEL;
     public static final ModConfigSpec.IntValue Y_OFFSET;
 
@@ -19,6 +20,11 @@ public final class Config {
         ENABLED = builder
                 .comment("Set to false to disable the following light block entirely.")
                 .define("enabled", true);
+
+        ANIMATION = builder
+                .comment("Make the visible cube tumble/roll as it follows the player.",
+                         "Set to false to keep it upright while still following smoothly.")
+                .define("animation", true);
 
         LIGHT_LEVEL = builder
                 .comment("Real light level emitted by the block, from 0 (dark) to 15 (glowstone).",

@@ -34,8 +34,17 @@ public class MovingLightBlockMod {
                     .sound(SoundType.GLASS)
                     .lightLevel(state -> Config.LIGHT_LEVEL.get())));
 
+    /**
+     * Render-only block state used by the rolling visual entity. It is never placed in the world.
+     */
+    public static final DeferredBlock<Block> VISUAL_LIGHT = BLOCKS.register("moving_light_visual",
+            () -> new Block(BlockBehaviour.Properties.of()
+                    .noCollission()
+                    .strength(Block.INDESTRUCTIBLE, 3600000.0F)));
+
     public MovingLightBlockMod(IEventBus modEventBus, ModContainer modContainer) {
         BLOCKS.register(modEventBus);
+        ModEntities.ENTITIES.register(modEventBus);
 
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
 

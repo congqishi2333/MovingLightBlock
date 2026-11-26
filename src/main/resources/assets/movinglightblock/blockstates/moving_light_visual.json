@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "movinglightblock:block/moving_light"
+    }
+  }
+}
