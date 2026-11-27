@@ -45,6 +45,70 @@
 
 保存配置文件后游戏内 `/reload` 即可生效；模组会清掉旧光块并在下一 tick 用新亮度重新放置。
 
+## 自定义实体材质（标准资源包，无需改模组）
+
+实体是直接调用原版方块模型系统渲染 `movinglightblock:moving_light_visual`，因此任何普通 Minecraft 资源包都能改它的外观；游戏内 `F3 + T` 重载资源包即可生效。
+
+### 方案 A：只换贴图（最简单）
+
+在资源包中放这个文件覆盖默认贴图：
+
+```text
+assets/movinglightblock/textures/block/moving_light.png
+```
+
+实体外观和创造模式物品图标都会一起变。用标准原版纹理格式即可（16×16，或 32/64 等 2 的幂）。
+
+### 方案 B：完全自定义模型
+
+资源包中放：
+
+```text
+assets/movinglightblock/blockstates/moving_light_visual.json
+assets/movinglightblock/models/block/my_cube.json
+assets/<你的命名空间>/textures/block/my_cube.png
+```
+
+`blockstates/moving_light_visual.json`：
+
+```json
+{
+  "variants": {
+    "": { "model": "<你的命名空间>:block/my_cube" }
+  }
+}
+```
+
+`models/block/my_cube.json` 使用标准原版 block model 格式：
+
+```json
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": { "all": "<你的命名空间>:block/my_cube" }
+}
+```
+
+也可以不用 `parent`，直接写 `elements` 自定义任意形状和 UV。
+
+### 动画贴图
+
+在贴图旁边放 `moving_light.png.mcmeta`，使用原版动画格式，例如：
+
+```json
+{
+  "animation": { "frametime": 2 }
+}
+```
+
+### 当前限制
+
+渲染器固定使用 `RenderType.solid()` 和最高亮度 `FULL_BRIGHT`：
+
+- 支持：任意模型形状、贴图、UV、动画贴图
+- 不支持：透明/半透明渲染层、按环境光变暗（实体永远全亮）
+
+如果你需要透明材质或按模型自动选择渲染层，我可以把渲染器改成 `ItemBlockRenderTypes.getRenderType(...)`；如果你更想用 `config` 文件夹里的 JSON 来指定模型（完全不用做资源包），也可以告诉我。
+
 ## 和 HandLightOnly 光影的区别
 
 - **HandLightOnly**：只在 `final.fsh` 里做屏幕后处理叠加，零模组、零几何 pass，不产生真实光照
