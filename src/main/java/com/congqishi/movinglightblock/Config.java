@@ -10,6 +10,7 @@ public final class Config {
 
     public static final ModConfigSpec.BooleanValue ENABLED;
     public static final ModConfigSpec.BooleanValue ANIMATION;
+    public static final ModConfigSpec.BooleanValue PASS_THROUGH_WALLS;
     public static final ModConfigSpec.IntValue LIGHT_LEVEL;
     public static final ModConfigSpec.IntValue Y_OFFSET;
     public static final ModConfigSpec.DoubleValue FOLLOW_DISTANCE;
@@ -29,6 +30,11 @@ public final class Config {
                 .comment("Make the visible cube tumble/roll as it follows the player.",
                          "Set to false to keep it upright while still following smoothly.")
                 .define("animation", true);
+
+        PASS_THROUGH_WALLS = builder
+                .comment("If true, the cube ignores block collision and can fly through walls.",
+                         "If false, it collides with blocks but still never blocks or pushes players.")
+                .define("passThroughWalls", true);
 
         LIGHT_LEVEL = builder
                 .comment("Real light level emitted by the block, from 0 (dark) to 15 (glowstone).",

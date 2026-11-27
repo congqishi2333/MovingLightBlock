@@ -1,5 +1,6 @@
 package com.congqishi.movinglightblock.entity;
 
+import com.congqishi.movinglightblock.Config;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Mth;
@@ -10,7 +11,9 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
@@ -33,6 +36,9 @@ import java.util.UUID;
 public class RollingLightEntity extends Entity {
     private static final double GRAVITY = 0.08D;
     private static final double TERMINAL_VELOCITY = 3.9D;
+
+    /** Small hitbox: collides with blocks in world, but fits through one-block gaps. */
+    private static final EntityDimensions DIMENSIONS = EntityDimensions.fixed(0.6F, 0.6F);
 
     /** Server-side "animation" config, synced so the client renderer can honour it. */
     public static final EntityDataAccessor<Boolean> ANIMATION =
@@ -192,20 +198,37 @@ public class RollingLightEntity extends Entity {
 
     @Override
     public void tick() {
+        boolean collide = !Config.PASS_THROUGH_WALLS.get();
+        this.noPhysics = !collide;
+
         Vec3 motion = this.getDeltaMovement();
         if (this.following) {
-            // Flying: follow() supplies the velocity, including vertical movement.
-            this.setPos(this.position().add(motion));
+            if (collide) {
+                // Vanilla swept AABB movement: walls stop it, but canBeCollidedWith() stays
+                // false so players can still walk straight through the visible cube.
+                this.move(MoverType.SELF, motion);
+            } else {
+                // Original behaviour: fly freely through blocks.
+                this.setPos(this.position().add(motion));
+            }
         } else {
             double vertical = Math.max(motion.y - GRAVITY, -TERMINAL_VELOCITY);
-            double nextY = this.getY() + vertical;
-            double ground = groundY();
-            if (nextY <= ground) {
-                nextY = ground;
-                vertical = 0.0D;
+            if (collide) {
+                this.setDeltaMovement(0.0D, vertical, 0.0D);
+                this.move(MoverType.SELF, new Vec3(0.0D, vertical, 0.0D));
+                if (this.onGround()) {
+                    this.setDeltaMovement(Vec3.ZERO);
+                }
+            } else {
+                double nextY = this.getY() + vertical;
+                double ground = groundY();
+                if (nextY <= ground) {
+                    nextY = ground;
+                    vertical = 0.0D;
+                }
+                this.setPos(this.getX(), nextY, this.getZ());
+                this.setDeltaMovement(0.0D, vertical, 0.0D);
             }
-            this.setPos(this.getX(), nextY, this.getZ());
-            this.setDeltaMovement(0.0D, vertical, 0.0D);
         }
         super.tick();
     }
@@ -231,10 +254,16 @@ public class RollingLightEntity extends Entity {
     }
 
     @Override
+    public EntityDimensions getDimensions(Pose pose) {
+        return DIMENSIONS;
+    }
+
+    @Override
     public boolean isPickable() {
         return false;
     }
 
+    /** Never blocks/pushes players, even when block collision is enabled. */
     @Override
     public boolean canBeCollidedWith() {
         return false;
