@@ -31,9 +31,9 @@ import net.neoforged.neoforge.network.IContainerFactory;
 /**
  * Workbench-like menu attached to a rolling light.
  *
- * <p>The single left-hand slot accepts a crafting table, furnace or chest item. That choice
- * enables the matching panel on the right: 3x3 crafting, smelting, or 27-slot storage.
- * Player inventory is always available at the bottom.</p>
+ * <p>The module slot accepts a crafting table, furnace or chest item. That choice enables the
+ * matching panel: 3x3 crafting, smelting, or 18-slot storage. Player inventory is always
+ * available at the bottom. Slot positions follow the 176x166 GUI artwork exactly.</p>
  */
 public class RollingLightMenu extends AbstractContainerMenu {
     public static final int MODE_NONE = 0;
@@ -48,11 +48,15 @@ public class RollingLightMenu extends AbstractContainerMenu {
     private static final int SMELT_FUEL = 12;
     private static final int SMELT_RESULT = 13;
     private static final int STORAGE_START = 14;
-    private static final int STORAGE_END = STORAGE_START + 27;
+    private static final int STORAGE_END = STORAGE_START + 18;
     private static final int INV_START = STORAGE_END;
     private static final int INV_END = INV_START + 36;
 
     private static final int COOK_TIME = 200;
+
+    /** Module slot position for each mode, matching the corresponding GUI texture cell. */
+    private static final int[] MODULE_X = {132, 132, 132, 136};
+    private static final int[] MODULE_Y = {6, 6, 7, 63};
 
     private final RollingLightEntity entity;
     private final int entityId;
@@ -65,7 +69,8 @@ public class RollingLightMenu extends AbstractContainerMenu {
     private final SimpleContainer smeltInput = new SimpleContainer(1);
     private final SimpleContainer smeltFuel = new SimpleContainer(1);
     private final SimpleContainer smeltOutput = new SimpleContainer(1);
-    private final SimpleContainer storage = new SimpleContainer(27);
+    private final SimpleContainer storage = new SimpleContainer(18);
+    private ModuleSlot moduleSlot;
 
     private final DataSlot modeData;
     private final DataSlot progressData;
@@ -96,33 +101,34 @@ public class RollingLightMenu extends AbstractContainerMenu {
         addDataSlot(progressData);
         addDataSlot(burnData);
 
-        addSlot(new ModuleSlot(module, 0, 156, 40));
+        this.moduleSlot = new ModuleSlot(module, 0, MODULE_X[MODE_NONE], MODULE_Y[MODE_NONE]);
+        addSlot(this.moduleSlot);
 
         this.crafting = new TransientCraftingContainer(this, 3, 3);
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 3; col++) {
-                addSlot(new ModeSlot(crafting, col + row * 3, 196 + col * 20, 30 + row * 20,
+                addSlot(new ModeSlot(crafting, col + row * 3, 70 + col * 18, 25 + row * 18,
                         MODE_CRAFTING, false));
             }
         }
-        addSlot(new ModeResultSlot(player, crafting, craftResult, 266, 50, MODE_CRAFTING));
+        addSlot(new ModeResultSlot(player, crafting, craftResult, 134, 43, MODE_CRAFTING));
 
-        addSlot(new ModeSlot(smeltInput, 0, 210, 50, MODE_SMELTING, false));
-        addSlot(new ModeSlot(smeltFuel, 0, 210, 82, MODE_SMELTING, false));
-        addSlot(new ModeSlot(smeltOutput, 0, 282, 54, MODE_SMELTING, true));
+        addSlot(new ModeSlot(smeltInput, 0, 70, 22, MODE_SMELTING, false));
+        addSlot(new ModeSlot(smeltFuel, 0, 152, 7, MODE_SMELTING, false));
+        addSlot(new ModeSlot(smeltOutput, 0, 130, 40, MODE_SMELTING, true));
 
-        for (int i = 0; i < 27; i++) {
-            addSlot(new ModeSlot(storage, i, 204 + (i % 9) * 20, 30 + (i / 9) * 20,
+        for (int i = 0; i < 18; i++) {
+            addSlot(new ModeSlot(storage, i, 64 + (i % 6) * 18, 7 + (i / 6) * 18,
                     MODE_STORAGE, false));
         }
 
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                addSlot(new Slot(inventory, 9 + row * 9 + col, 204 + col * 20, 150 + row * 20));
+                addSlot(new Slot(inventory, 9 + row * 9 + col, 8 + col * 18, 84 + row * 18));
             }
         }
         for (int col = 0; col < 9; col++) {
-            addSlot(new Slot(inventory, col, 204 + col * 20, 208));
+            addSlot(new Slot(inventory, col, 8 + col * 18, 142));
         }
 
         slotsChanged(module);
@@ -130,6 +136,24 @@ public class RollingLightMenu extends AbstractContainerMenu {
 
     public int getMode() {
         return modeData.get();
+    }
+
+    /** Rebuilds the module slot on the cell drawn in the current mode's texture. */
+    public void updateModuleSlotPosition() {
+        int mode = modeData.get();
+        if (mode < 0 || mode >= MODULE_X.length) {
+            mode = MODE_NONE;
+        }
+        int x = MODULE_X[mode];
+        int y = MODULE_Y[mode];
+        if (this.moduleSlot != null && this.moduleSlot.x == x && this.moduleSlot.y == y) {
+            return;
+        }
+        if (!this.slots.isEmpty() && this.slots.get(0) == this.moduleSlot) {
+            this.slots.remove(0);
+        }
+        this.moduleSlot = new ModuleSlot(this.module, 0, x, y);
+        this.slots.add(0, this.moduleSlot);
     }
 
     public int getSmeltProgress() {
@@ -162,6 +186,7 @@ public class RollingLightMenu extends AbstractContainerMenu {
         if (mode != modeData.get()) {
             modeData.set(mode);
         }
+        updateModuleSlotPosition();
         if (mode == MODE_CRAFTING && !level.isClientSide) {
             updateCraftResult();
         }

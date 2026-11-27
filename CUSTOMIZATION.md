@@ -4,13 +4,16 @@
 
 仓库里附带一份可直接复制的模板：`example-resourcepack/`。
 
-管理界面背景也可以用资源包替换（当前是占位图，尺寸 420×240）：
+管理界面背景也可以用资源包替换。界面尺寸固定为 **176×166**，按放入的模块自动切换三张贴图：
 
 ```text
-assets/movinglightblock/textures/gui/rolling_light_ui.png
+assets/movinglightblock/textures/gui/rolling_light_crafting.png   # 工作台 / 3×3 合成
+assets/movinglightblock/textures/gui/rolling_light_smelting.png   # 熔炉 / 烧炼
+assets/movinglightblock/textures/gui/rolling_light_storage.png    # 箱子 / 18 格储存
+assets/movinglightblock/textures/gui/rolling_light_ui.png         # 空模块时的占位背景
 ```
 
-布局坐标在代码里是固定的：左侧模型区 `(8,18,142,148)`、模块槽 `(156,40)`、右侧功能区 `(196,18,200,120)`、玩家背包 `(196,146,200,88)`。模型本身由模组实时绘制在左侧区域，不需要画进贴图。
+槽位坐标与贴图上的格子一一对应：模型预览区在左上黑色方块内，由模组实时绘制，不需要画进贴图；玩家背包为 `x=8+18列, y=84+18行` 的 9×4 格。自定义贴图时请保留这些槽位位置。
 
 ## 方案 A：只替换贴图（最简单）
 
