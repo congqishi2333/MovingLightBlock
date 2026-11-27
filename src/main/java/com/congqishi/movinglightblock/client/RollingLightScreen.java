@@ -13,6 +13,8 @@ import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
+import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import org.joml.Quaternionf;
 
 /** GUI backed by the three mode-specific 176x166 textures supplied for this mod. */
@@ -25,6 +27,15 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
     private static ResourceLocation gui(String name) {
         return ResourceLocation.fromNamespaceAndPath(MovingLightBlockMod.MODID, "textures/gui/" + name);
     }
+
+    /** Settings / change-model / sound icon positions painted into each mode's texture. */
+    private static final int[][] BUTTON_POS = {
+            {9, 64, 26, 65, 44, 65}, // no module
+            {8, 64, 26, 63, 44, 63}, // crafting
+            {9, 66, 26, 65, 44, 65}, // smelting
+            {9, 64, 25, 63, 43, 64}  // storage
+    };
+    private static final int BUTTON_SIZE = 16;
 
     public RollingLightScreen(RollingLightMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -46,6 +57,56 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
     }
 
     @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0) {
+            int localX = (int) (mouseX - this.leftPos);
+            int localY = (int) (mouseY - this.topPos);
+            int mode = menu.getMode();
+            if (mode < 0 || mode >= BUTTON_POS.length) {
+                mode = RollingLightMenu.MODE_NONE;
+            }
+            int[] pos = BUTTON_POS[mode];
+            if (hit(localX, localY, pos[0], pos[1])) {
+                Minecraft.getInstance().setScreen(new ConfigurationScreen(
+                        ModList.get().getModContainerById(MovingLightBlockMod.MODID).orElseThrow(),
+                        this));
+                return true;
+            }
+            if (hit(localX, localY, pos[2], pos[3])) {
+                Minecraft.getInstance().setScreen(new ModelSelectScreen(this));
+                return true;
+            }
+            if (hit(localX, localY, pos[4], pos[5])) {
+                if (Minecraft.getInstance().player != null) {
+                    Minecraft.getInstance().player.sendSystemMessage(
+                            Component.translatable("message.movinglightblock.sound_soon"));
+                }
+                return true;
+            }
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    private static boolean hit(int x, int y, int buttonX, int buttonY) {
+        return x >= buttonX && x < buttonX + BUTTON_SIZE
+                && y >= buttonY && y < buttonY + BUTTON_SIZE;
+    }
+
+    private void drawButtonHover(GuiGraphics guiGraphics, int x, int y) {
+        int mode = menu.getMode();
+        if (mode < 0 || mode >= BUTTON_POS.length) {
+            mode = RollingLightMenu.MODE_NONE;
+        }
+        int[] pos = BUTTON_POS[mode];
+        for (int i = 0; i < pos.length; i += 2) {
+            if (hit(x, y, pos[i], pos[i + 1])) {
+                guiGraphics.fill(pos[i], pos[i + 1], pos[i] + BUTTON_SIZE,
+                        pos[i + 1] + BUTTON_SIZE, 0x22FFFFFF);
+            }
+        }
+    }
+
+    @Override
     protected void renderBg(GuiGraphics guiGraphics, float partialTick, int mouseX, int mouseY) {
         PoseStack pose = guiGraphics.pose();
         pose.pushPose();
@@ -54,6 +115,7 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
         guiGraphics.blit(backgroundTexture(), 0, 0, 0, 0, this.imageWidth, this.imageHeight,
                 this.imageWidth, this.imageHeight);
 
+        drawButtonHover(guiGraphics, mouseX - this.leftPos, mouseY - this.topPos);
         menu.updateModuleSlotPosition();
         drawProgress(guiGraphics);
         renderModel(guiGraphics, partialTick);

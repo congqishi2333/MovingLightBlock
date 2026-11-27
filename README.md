@@ -46,6 +46,7 @@
 > 1.9.0 新增 `passThroughWalls` 配置：可关闭穿墙，让实体与方块碰撞但仍不妨碍玩家。
 > 1.10.0 新增管理界面（模型预览 + 工作台/熔炉/箱子模块）和可配置收回组合键。
 > 1.11.0 管理界面改用三张 176×166 模式贴图，槽位与贴图对齐；箱子储存改为 18 格。
+> 1.12.0 界面左下三个图标已接通：设置打开游戏内配置界面，换模型可选择模型预设并即时刷新；声音按钮待后续实现。
 
 ## 配置
 
@@ -80,6 +81,18 @@ assets/movinglightblock/textures/block/moving_light.png
 ```
 
 游戏内 `F3 + T` 重载资源包即可生效。
+
+### 游戏内切换模型预设
+
+管理界面左下角的**换模型**按钮会打开预设列表。预设是 JSON 文件，放在：
+
+```text
+config/movinglightblock/models/*.json
+```
+
+格式与 `rolling.json` 完全相同（`axis`、`freeAxis`、`euler`、`degreesPerBlock`、`speed`、`enabled`）。模组自带 `auto` / `x-axis` / `y-axis` / `z-axis` / `free-axis` / `euler` / `none` 七个预设，首次打开列表时会自动复制到该目录。你也可以直接往目录里放自己的 JSON。选择后写入 `config/movinglightblock/active_model.txt`，当前实体的滚动状态立即刷新；选「默认」则继续使用资源包里的 `rolling.json`。
+
+**声音**按钮目前只是占位提示，等你后续说明再接。
 
 ## 和 HandLightOnly 光影的区别
 

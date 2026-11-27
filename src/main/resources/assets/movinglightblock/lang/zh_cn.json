@@ -8,6 +8,10 @@
   "gui.movinglightblock.smelting": "烧炼",
   "gui.movinglightblock.storage": "储存",
   "gui.movinglightblock.empty": "放入工作台、熔炉或箱子",
+  "gui.movinglightblock.model_title": "选择模型",
+  "gui.movinglightblock.model_default": "默认（资源包 rolling.json）",
+  "gui.movinglightblock.model_hint": "预设位于 config/movinglightblock/models/",
+  "message.movinglightblock.sound_soon": "声音功能稍后开放",
   "message.movinglightblock.retracted": "已收回跟随光明方块",
   "message.movinglightblock.not_owner": "这个光明方块属于其他玩家"
 }

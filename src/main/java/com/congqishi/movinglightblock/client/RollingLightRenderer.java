@@ -39,6 +39,7 @@ public class RollingLightRenderer extends EntityRenderer<RollingLightEntity> {
     private ResourceManager lastManager;
     private RollingConfig rollingConfig;
     private long lastConfigLoadNanos = System.nanoTime();
+    private int lastModelRevision = ModelManager.revision();
 
     public RollingLightRenderer(EntityRendererProvider.Context context) {
         super(context);
@@ -46,7 +47,7 @@ public class RollingLightRenderer extends EntityRenderer<RollingLightEntity> {
         this.renderState = MovingLightBlockMod.VISUAL_LIGHT.get().defaultBlockState();
         this.shadowRadius = 0.0F;
         this.lastManager = context.getResourceManager();
-        this.rollingConfig = RollingConfig.load(this.lastManager);
+        this.rollingConfig = ModelManager.load(this.lastManager);
     }
 
     @Override
@@ -54,13 +55,16 @@ public class RollingLightRenderer extends EntityRenderer<RollingLightEntity> {
                        PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
         ResourceManager manager = Minecraft.getInstance().getResourceManager();
         boolean managerChanged = manager != this.lastManager;
+        int modelRevision = ModelManager.revision();
+        boolean modelChanged = modelRevision != this.lastModelRevision;
         long now = System.nanoTime();
         // ResourceManager.reload() can keep the same instance, so also poll periodically.
-        if (managerChanged || now - this.lastConfigLoadNanos > 500_000_000L) {
+        if (managerChanged || modelChanged || now - this.lastConfigLoadNanos > 500_000_000L) {
             this.lastManager = manager;
-            this.rollingConfig = RollingConfig.load(manager);
+            this.lastModelRevision = modelRevision;
+            this.rollingConfig = ModelManager.load(manager);
             this.lastConfigLoadNanos = now;
-            if (managerChanged) {
+            if (managerChanged || modelChanged) {
                 this.states.clear();
             }
         }

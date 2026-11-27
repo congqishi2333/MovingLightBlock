@@ -43,44 +43,53 @@ public final class RollingConfig {
         RollingConfig config = new RollingConfig();
         manager.getResource(LOCATION).ifPresent(resource -> {
             try (var reader = resource.openAsReader()) {
-                JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
-
-                config.enabled = bool(json, "enabled", config.enabled);
-                config.speed = clamp(floatValue(json, "speed", config.speed), 0.0F, 10.0F);
-                config.degreesPerBlock = clamp(
-                        floatValue(json, "degreesPerBlock", config.degreesPerBlock), 0.0F, 720.0F);
-
-                parseAxis(json, config);
-
-                // "degreesPerBlock": [x, y, z] is the shorthand for Euler mode.
-                // An explicit "euler" object/array wins over it.
-                Vector3f euler = vector(json.get("degreesPerBlock"), null);
-                Vector3f explicitEuler = vector(json.get("euler"), null);
-                if (explicitEuler != null) {
-                    euler = explicitEuler;
-                }
-                if (euler != null) {
-                    config.eulerDegrees = clampVector(euler, -720.0F, 720.0F);
-                }
-
-                Vector3f axisVector = vector(json.get("freeAxis"), null);
-                if (axisVector == null) {
-                    axisVector = vector(json.get("axisVector"), null);
-                }
-                if (axisVector != null && lengthSquared(axisVector) > AXIS_EPS) {
-                    config.freeAxis = axisVector.normalize();
-                }
-                if (config.axis == Axis.FREE && lengthSquared(config.freeAxis) <= AXIS_EPS) {
-                    config.axis = Axis.AUTO;
-                }
-                if (config.axis == Axis.NONE) {
-                    config.enabled = false;
-                }
+                apply(JsonParser.parseReader(reader).getAsJsonObject(), config);
             } catch (Exception ignored) {
                 // Keep defaults; a broken JSON must never break rendering.
             }
         });
         return config;
+    }
+
+    /** Parses a standalone model preset, e.g. one of the files selectable in game. */
+    public static RollingConfig parse(JsonObject json) {
+        RollingConfig config = new RollingConfig();
+        apply(json, config);
+        return config;
+    }
+
+    private static void apply(JsonObject json, RollingConfig config) {
+        config.enabled = bool(json, "enabled", config.enabled);
+        config.speed = clamp(floatValue(json, "speed", config.speed), 0.0F, 10.0F);
+        config.degreesPerBlock = clamp(
+                floatValue(json, "degreesPerBlock", config.degreesPerBlock), 0.0F, 720.0F);
+
+        parseAxis(json, config);
+
+        // "degreesPerBlock": [x, y, z] is the shorthand for Euler mode.
+        // An explicit "euler" object/array wins over it.
+        Vector3f euler = vector(json.get("degreesPerBlock"), null);
+        Vector3f explicitEuler = vector(json.get("euler"), null);
+        if (explicitEuler != null) {
+            euler = explicitEuler;
+        }
+        if (euler != null) {
+            config.eulerDegrees = clampVector(euler, -720.0F, 720.0F);
+        }
+
+        Vector3f axisVector = vector(json.get("freeAxis"), null);
+        if (axisVector == null) {
+            axisVector = vector(json.get("axisVector"), null);
+        }
+        if (axisVector != null && lengthSquared(axisVector) > AXIS_EPS) {
+            config.freeAxis = axisVector.normalize();
+        }
+        if (config.axis == Axis.FREE && lengthSquared(config.freeAxis) <= AXIS_EPS) {
+            config.axis = Axis.AUTO;
+        }
+        if (config.axis == Axis.NONE) {
+            config.enabled = false;
+        }
     }
 
     private static void parseAxis(JsonObject json, RollingConfig config) {

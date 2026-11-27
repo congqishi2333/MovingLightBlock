@@ -8,6 +8,10 @@
   "gui.movinglightblock.smelting": "Smelting",
   "gui.movinglightblock.storage": "Storage",
   "gui.movinglightblock.empty": "Place a crafting table, furnace or chest",
+  "gui.movinglightblock.model_title": "Select model",
+  "gui.movinglightblock.model_default": "Default (resource pack rolling.json)",
+  "gui.movinglightblock.model_hint": "Presets live in config/movinglightblock/models/",
+  "message.movinglightblock.sound_soon": "Sound is coming later",
   "message.movinglightblock.retracted": "Moving light picked up",
   "message.movinglightblock.not_owner": "This light belongs to another player"
 }

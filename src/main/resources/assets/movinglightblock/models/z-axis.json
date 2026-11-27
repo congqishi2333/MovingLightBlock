@@ -1,0 +1,6 @@
+{
+  "enabled": true,
+  "axis": "z",
+  "degreesPerBlock": 90.0,
+  "speed": 1.0
+}
