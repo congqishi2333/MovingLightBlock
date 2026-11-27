@@ -29,12 +29,49 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class LightFollower {
     private static final Map<UUID, Placement> PLACEMENTS = new ConcurrentHashMap<>();
     private static final Map<UUID, RollingLightEntity> ENTITIES = new ConcurrentHashMap<>();
-    private static final int[] SEARCH_OFFSETS = {0, 1, -1, 2, -2, 3};
+    private static final int[][] SEARCH_OFFSETS = buildSearchOffsets();
 
     private record Placement(Level level, BlockPos pos, BlockState previous) {
     }
 
     private LightFollower() {
+    }
+
+    /**
+     * Cells tried around the cube, in priority order: its own cell, nearby horizontal cells,
+     * then vertical neighbours. Incomplete blocks (slabs, stairs, fences, snow, grass, ...)
+     * often have canBeReplaced() == false, so looking only above/below used to leave no target
+     * and the real light vanished while the visible cube remained.
+     */
+    private static int[][] buildSearchOffsets() {
+        List<int[]> offsets = new ArrayList<>();
+        offsets.add(new int[] {0, 0, 0});
+
+        for (int radius = 1; radius <= 2; radius++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dz = -radius; dz <= radius; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) == radius) {
+                        offsets.add(new int[] {dx, 0, dz});
+                    }
+                }
+            }
+        }
+
+        for (int dy : new int[] {1, -1, 2, -2, 3, -3}) {
+            offsets.add(new int[] {0, dy, 0});
+        }
+
+        for (int dy : new int[] {1, -1, 2, -2}) {
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    if (dx != 0 || dz != 0) {
+                        offsets.add(new int[] {dx, dy, dz});
+                    }
+                }
+            }
+        }
+
+        return offsets.toArray(new int[0][]);
     }
 
     public static void register(RollingLightEntity entity) {
@@ -87,7 +124,8 @@ public final class LightFollower {
 
             BlockPos targetPos = findTarget(level, entity.blockPosition());
             if (targetPos == null) {
-                clearBlock(id);
+                // Temporarily surrounded by non-replaceable blocks: keep the last valid light
+                // instead of making it disappear while the visible cube is still there.
                 continue;
             }
 
@@ -135,8 +173,8 @@ public final class LightFollower {
     }
 
     private static BlockPos findTarget(Level level, BlockPos base) {
-        for (int dy : SEARCH_OFFSETS) {
-            BlockPos pos = base.above(dy);
+        for (int[] offset : SEARCH_OFFSETS) {
+            BlockPos pos = base.offset(offset[0], offset[1], offset[2]);
             BlockState state = level.getBlockState(pos);
             // MovingLightBlock.canBeReplaced() is true, so our own light counts as a valid
             // target cell. Otherwise the light would climb one block every tick.
