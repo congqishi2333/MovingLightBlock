@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
@@ -52,15 +53,24 @@ public final class LightFollower {
                 continue;
             }
 
-            clearBlock(id);
+            Placement placement = PLACEMENTS.get(id);
+            if (placement != null
+                    && (placement.level() != level
+                    || !level.getBlockState(placement.pos()).is(MovingLightBlockMod.MOVING_LIGHT.get()))) {
+                // Someone replaced or removed our hidden block; forget it so it can be re-placed.
+                PLACEMENTS.remove(id);
+                placement = null;
+            }
 
             if (!Config.ENABLED.get()) {
+                clearBlock(id);
                 entity.stopFollowing();
                 continue;
             }
 
             ServerPlayer target = findFollowTarget(level, entity);
             if (target == null) {
+                clearBlock(id);
                 entity.stopFollowing();
                 continue;
             }
@@ -77,14 +87,28 @@ public final class LightFollower {
 
             BlockPos targetPos = findTarget(level, entity.blockPosition());
             if (targetPos == null) {
+                clearBlock(id);
                 continue;
             }
 
-            BlockState oldState = level.getBlockState(targetPos);
-            if (!oldState.is(MovingLightBlockMod.MOVING_LIGHT.get())) {
-                level.setBlock(targetPos, MovingLightBlock.stateForLevel(Config.LIGHT_LEVEL.get()),
-                        Block.UPDATE_ALL);
-                PLACEMENTS.put(id, new Placement(level, targetPos, oldState));
+            // Keep the block in place while the cube stays in the same cell. Re-creating it
+            // every tick made the real light flicker and caused unnecessary lighting updates.
+            if (placement == null
+                    || placement.level() != level
+                    || !placement.pos().equals(targetPos)) {
+                if (placement != null) {
+                    restore(placement);
+                }
+
+                BlockState oldState = level.getBlockState(targetPos);
+                if (oldState.is(MovingLightBlockMod.MOVING_LIGHT.get())) {
+                    // Adopt an orphaned light block instead of leaking it forever.
+                    PLACEMENTS.put(id, new Placement(level, targetPos, Blocks.AIR.defaultBlockState()));
+                } else {
+                    level.setBlock(targetPos, MovingLightBlock.stateForLevel(Config.LIGHT_LEVEL.get()),
+                            Block.UPDATE_ALL);
+                    PLACEMENTS.put(id, new Placement(level, targetPos, oldState));
+                }
             }
         }
     }
@@ -114,7 +138,9 @@ public final class LightFollower {
         for (int dy : SEARCH_OFFSETS) {
             BlockPos pos = base.above(dy);
             BlockState state = level.getBlockState(pos);
-            if (state.canBeReplaced() && !state.is(MovingLightBlockMod.MOVING_LIGHT.get())) {
+            // MovingLightBlock.canBeReplaced() is true, so our own light counts as a valid
+            // target cell. Otherwise the light would climb one block every tick.
+            if (state.canBeReplaced()) {
                 return pos;
             }
         }

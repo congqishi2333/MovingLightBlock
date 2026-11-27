@@ -41,7 +41,8 @@ public final class Config {
                 .defineInRange("yOffset", 0, -2, 3);
 
         FOLLOW_DISTANCE = builder
-                .comment("How far the player must move away before the entity starts chasing (in blocks).")
+                .comment("How far the player must first walk away before the entity starts chasing.",
+                         "After the first chase it keeps following as soon as the player leaves the stop radius.")
                 .defineInRange("followDistance", 3.0D, 1.0D, 16.0D);
 
         STOP_DISTANCE = builder

@@ -40,6 +40,7 @@ public class RollingLightEntity extends Entity {
 
     private UUID owner;
     private boolean following;
+    private boolean hasStarted;
     private Vec3 lastPlayerTarget;
     private double travelSinceIdle;
 
@@ -86,12 +87,16 @@ public class RollingLightEntity extends Entity {
         }
         this.lastPlayerTarget = target;
 
-        if (!this.following && this.travelSinceIdle >= startDistance && distance > stopDistance) {
+        // Only the very first chase waits for the player to walk away.
+        // After that it resumes as soon as the player leaves the small stop radius,
+        // instead of stopping and starting in visible 3-block bursts.
+        if (!this.following && distance > stopDistance
+                && (this.hasStarted || this.travelSinceIdle >= startDistance)) {
             this.following = true;
+            this.hasStarted = true;
         }
         if (this.following && distance <= stopDistance) {
             this.following = false;
-            this.travelSinceIdle = 0.0D;
         }
 
         double stepLength = 0.0D;
@@ -116,6 +121,7 @@ public class RollingLightEntity extends Entity {
 
     public void stopFollowing() {
         this.following = false;
+        this.hasStarted = false;
         this.travelSinceIdle = 0.0D;
         this.lastPlayerTarget = null;
         this.setDeltaMovement(Vec3.ZERO);
@@ -126,6 +132,7 @@ public class RollingLightEntity extends Entity {
         this.setPos(position);
         this.setDeltaMovement(Vec3.ZERO);
         this.following = false;
+        this.hasStarted = false;
         this.travelSinceIdle = 0.0D;
         this.lastPlayerTarget = null;
     }
