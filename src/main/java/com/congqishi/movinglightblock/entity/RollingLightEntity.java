@@ -16,9 +16,6 @@ import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.Vec3;
-import org.joml.AxisAngle4f;
-import org.joml.Quaternionf;
-import org.joml.Vector3f;
 
 import java.util.UUID;
 
@@ -30,16 +27,17 @@ import java.util.UUID;
  * toward the player at a bounded speed so it never sits at the player's feet and
  * blocks interactions. When it stops chasing, gravity pulls it back to the ground.
  * Chasing is triggered by the player's own travel, not by the distance to the entity,
- * so falling cannot re-trigger it. Rotation is accumulated from its own movement.</p>
+ * so falling cannot re-trigger it. Visual rolling is accumulated client-side according to
+ * the resource pack's {@code assets/movinglightblock/rolling.json}.</p>
  */
 public class RollingLightEntity extends Entity {
     private static final double GRAVITY = 0.08D;
     private static final double TERMINAL_VELOCITY = 3.9D;
 
-    public static final EntityDataAccessor<Quaternionf> ROTATION =
-            SynchedEntityData.defineId(RollingLightEntity.class, EntityDataSerializers.QUATERNION);
+    /** Server-side "animation" config, synced so the client renderer can honour it. */
+    public static final EntityDataAccessor<Boolean> ANIMATION =
+            SynchedEntityData.defineId(RollingLightEntity.class, EntityDataSerializers.BOOLEAN);
 
-    private final Quaternionf rotation = new Quaternionf();
     private UUID owner;
     private boolean following;
     private Vec3 lastPlayerTarget;
@@ -55,7 +53,7 @@ public class RollingLightEntity extends Entity {
 
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
-        builder.define(ROTATION, new Quaternionf());
+        builder.define(ANIMATION, true);
     }
 
     public void setOwner(UUID owner) {
@@ -108,22 +106,12 @@ public class RollingLightEntity extends Entity {
             this.setDeltaMovement(0.0D, vertical, 0.0D);
         }
 
-        if (animate) {
-            double horizontal = Math.hypot(delta.x, delta.z);
-            if (stepLength > 1.0E-4D && horizontal > 1.0E-4D) {
-                double horizontalStep = stepLength * horizontal / distance;
-                // A one-block move tips a one-block cube by 90 degrees.
-                float angle = (float) Math.min(horizontalStep, 2.0D) * ((float) Math.PI / 2.0F);
-                Vector3f axis = new Vector3f((float) delta.z, 0.0F, (float) -delta.x).normalize();
-                Quaternionf deltaRotation = new Quaternionf(new AxisAngle4f(angle, axis));
-                this.rotation.premul(deltaRotation);
-            }
-        } else {
-            this.rotation.identity();
-        }
+        // Rolling itself is computed client-side so resource packs can define axis/speed.
+        this.entityData.set(ANIMATION, animate);
+    }
 
-        // Send a copy: SynchedEntityData skips updates when the reference value compares equal.
-        this.entityData.set(ROTATION, new Quaternionf(this.rotation));
+    public boolean isAnimationEnabled() {
+        return this.entityData.get(ANIMATION);
     }
 
     public void stopFollowing() {
@@ -193,10 +181,6 @@ public class RollingLightEntity extends Entity {
     /** Skips magma/cactus/fire/entityInside effects entirely. */
     @Override
     protected void checkInsideBlocks() {
-    }
-
-    public Quaternionf getRenderRotation() {
-        return this.entityData.get(ROTATION);
     }
 
     @Override

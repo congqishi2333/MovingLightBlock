@@ -80,6 +80,45 @@ assets/<ns>/textures/block/my_cube.png
 }
 ```
 
+## 滚动行为（rolling.json）
+
+在资源包中放这个文件即可自定义滚动方式：
+
+```text
+assets/movinglightblock/rolling.json
+```
+
+默认内容（模板里已经带了一份）：
+
+```json
+{
+  "enabled": true,
+  "axis": "auto",
+  "degreesPerBlock": 90.0,
+  "speed": 1.0
+}
+```
+
+| 字段 | 默认 | 说明 |
+|---|---:|---|
+| `enabled` | `true` | 是否滚动；`false` 时实体保持直立。也可用 `axis: "none"` 达到同样效果 |
+| `axis` | `"auto"` | 滚动轴：`auto`（沿移动方向翻滚）、`x`、`y`、`z`、`none`（不滚） |
+| `degreesPerBlock` | `90.0` | 每移动 1 格滚动的角度；`90` 就是《半条命》伙伴方块式翻滚 |
+| `speed` | `1.0` | 速度倍率，乘以 `degreesPerBlock`；`2.0` 就是两倍滚动量，`0.0` 则不滚 |
+
+轴的含义：
+
+- `auto`：绕“上方向 × 水平位移”翻滚，也就是原来的伙伴方块式滚动
+- `x`：绕世界 X 轴，按 Z 方向位移滚动（前后翻）
+- `y`：绕世界 Y 轴，按水平位移自转（像陀螺）
+- `z`：绕世界 Z 轴，按 X 方向位移滚动（左右翻）
+
+说明：
+
+- 文件缺失或字段缺失时自动使用默认值，不做资源包也能正常工作
+- `config/movinglightblock-common.toml` 里的 `animation` 仍然是总开关（同步到客户端），设 `false` 会强制不滚，资源包无法覆盖
+- 改完 `rolling.json` 用 `F3 + T` 重载资源包即可，滚动状态会重置
+
 ## 动画贴图
 
 在贴图旁放同名 `.mcmeta` 文件：

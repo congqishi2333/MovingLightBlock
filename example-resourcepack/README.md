@@ -16,7 +16,11 @@
    ```text
    assets/movinglightblock/models/block/moving_light_custom.json
    ```
-5. 游戏内按 `F3 + T` 重载资源包
+5. 如需自定义滚动方式，编辑：
+   ```text
+   assets/movinglightblock/rolling.json
+   ```
+6. 游戏内按 `F3 + T` 重载资源包
 
 ## 文件结构
 
@@ -27,6 +31,7 @@ example-resourcepack/
     blockstates/moving_light_visual.json    # 固定文件名，不要改
     models/block/moving_light_custom.json   # 标准原版 block model
     textures/block/moving_light_custom.png  # 换成你自己的贴图
+    rolling.json                            # 滚动轴 / 是否滚动 / 速度
 ```
 
 `blockstates/moving_light_visual.json` 必须保持这个名字和路径，它指向 `movinglightblock:block/moving_light_custom` 模型。模型里的纹理路径可以改成你自己的命名空间。
