@@ -2,5 +2,12 @@
   "block.movinglightblock.moving_light": "跟随光明方块",
   "block.movinglightblock.moving_light_visual": "跟随光明方块（渲染用）",
   "entity.movinglightblock.rolling_light": "跟随光明方块",
-  "item.movinglightblock.moving_light": "跟随光明方块"
+  "item.movinglightblock.moving_light": "跟随光明方块",
+  "gui.movinglightblock.module": "模块",
+  "gui.movinglightblock.crafting": "合成",
+  "gui.movinglightblock.smelting": "烧炼",
+  "gui.movinglightblock.storage": "储存",
+  "gui.movinglightblock.empty": "放入工作台、熔炉或箱子",
+  "message.movinglightblock.retracted": "已收回跟随光明方块",
+  "message.movinglightblock.not_owner": "这个光明方块属于其他玩家"
 }

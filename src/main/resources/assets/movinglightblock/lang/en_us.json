@@ -2,5 +2,12 @@
   "block.movinglightblock.moving_light": "Moving Light Block",
   "block.movinglightblock.moving_light_visual": "Moving Light Block (Visual)",
   "entity.movinglightblock.rolling_light": "Moving Light Block",
-  "item.movinglightblock.moving_light": "Moving Light Block"
+  "item.movinglightblock.moving_light": "Moving Light Block",
+  "gui.movinglightblock.module": "Module",
+  "gui.movinglightblock.crafting": "Crafting",
+  "gui.movinglightblock.smelting": "Smelting",
+  "gui.movinglightblock.storage": "Storage",
+  "gui.movinglightblock.empty": "Place a crafting table, furnace or chest",
+  "message.movinglightblock.retracted": "Moving light picked up",
+  "message.movinglightblock.not_owner": "This light belongs to another player"
 }

@@ -11,6 +11,7 @@ public final class Config {
     public static final ModConfigSpec.BooleanValue ENABLED;
     public static final ModConfigSpec.BooleanValue ANIMATION;
     public static final ModConfigSpec.BooleanValue PASS_THROUGH_WALLS;
+    public static final ModConfigSpec.ConfigValue<String> RETRACT_KEY;
     public static final ModConfigSpec.IntValue LIGHT_LEVEL;
     public static final ModConfigSpec.IntValue Y_OFFSET;
     public static final ModConfigSpec.DoubleValue FOLLOW_DISTANCE;
@@ -35,6 +36,12 @@ public final class Config {
                 .comment("If true, the cube ignores block collision and can fly through walls.",
                          "If false, it collides with blocks but still never blocks or pushes players.")
                 .define("passThroughWalls", true);
+
+        RETRACT_KEY = builder
+                .comment("Combination used while aiming at the cube to pick it back up as an item.",
+                         "Format: modifiers + button/key, joined by '+'. Default 'shift+right'.",
+                         "Examples: 'shift+right', 'ctrl+left', 'alt+middle', 'shift+key.keyboard.r'.")
+                .define("retractKey", "shift+right");
 
         LIGHT_LEVEL = builder
                 .comment("Real light level emitted by the block, from 0 (dark) to 15 (glowstone).",

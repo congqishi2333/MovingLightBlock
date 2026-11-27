@@ -1,8 +1,11 @@
 package com.congqishi.movinglightblock.entity;
 
 import com.congqishi.movinglightblock.Config;
+import com.congqishi.movinglightblock.menu.RollingLightMenu;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -10,11 +13,17 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.PushReaction;
@@ -33,7 +42,7 @@ import java.util.UUID;
  * so falling cannot re-trigger it. Visual rolling is accumulated client-side according to
  * the resource pack's {@code assets/movinglightblock/rolling.json}.</p>
  */
-public class RollingLightEntity extends Entity {
+public class RollingLightEntity extends Entity implements MenuProvider {
     private static final double GRAVITY = 0.08D;
     private static final double TERMINAL_VELOCITY = 3.9D;
 
@@ -258,9 +267,33 @@ public class RollingLightEntity extends Entity {
         return DIMENSIONS;
     }
 
+    /** Must be pickable so right-click (and the retract combination) can target the cube. */
     @Override
     public boolean isPickable() {
-        return false;
+        return true;
+    }
+
+    @Override
+    public InteractionResult interact(Player player, InteractionHand hand) {
+        if (!(player instanceof ServerPlayer serverPlayer)) {
+            return InteractionResult.SUCCESS;
+        }
+        if (this.owner != null && !this.owner.equals(player.getUUID())) {
+            player.displayClientMessage(Component.translatable("message.movinglightblock.not_owner"), true);
+            return InteractionResult.CONSUME;
+        }
+        serverPlayer.openMenu(this, buffer -> buffer.writeVarInt(this.getId()));
+        return InteractionResult.CONSUME;
+    }
+
+    @Override
+    public Component getDisplayName() {
+        return Component.translatable("entity.movinglightblock.rolling_light");
+    }
+
+    @Override
+    public AbstractContainerMenu createMenu(int containerId, Inventory inventory, Player player) {
+        return new RollingLightMenu(containerId, inventory, this);
     }
 
     /** Never blocks/pushes players, even when block collision is enabled. */
