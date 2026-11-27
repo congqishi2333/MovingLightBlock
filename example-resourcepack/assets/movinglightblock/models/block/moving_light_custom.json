@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "movinglightblock:block/moving_light_custom"
+  }
+}
