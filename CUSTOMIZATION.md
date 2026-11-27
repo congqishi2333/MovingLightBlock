@@ -101,17 +101,91 @@ assets/movinglightblock/rolling.json
 
 | 字段 | 默认 | 说明 |
 |---|---:|---|
-| `enabled` | `true` | 是否滚动；`false` 时实体保持直立。也可用 `axis: "none"` 达到同样效果 |
-| `axis` | `"auto"` | 滚动轴：`auto`（沿移动方向翻滚）、`x`、`y`、`z`、`none`（不滚） |
-| `degreesPerBlock` | `90.0` | 每移动 1 格滚动的角度；`90` 就是《半条命》伙伴方块式翻滚 |
-| `speed` | `1.0` | 速度倍率，乘以 `degreesPerBlock`；`2.0` 就是两倍滚动量，`0.0` 则不滚 |
+| `enabled` | `true` | 是否滚动；`false` 时实体保持直立。也可用 `axis: "none"` |
+| `axis` | `"auto"` | `auto` / `x` / `y` / `z` / `none` / `free` / `euler`，或直接写 `[x, y, z]` 数组 |
+| `freeAxis` | `[0, 1, 0]` | `axis: "free"` 时的自定义单位轴；也接受 `{"x":0,"y":1,"z":0}` |
+| `degreesPerBlock` | `90.0` | 每移动 1 格滚动的角度；数组形式 `[x,y,z]` 用于欧拉模式 |
+| `euler` | — | 欧拉模式下的每格三轴角度，可写数组或对象，优先于数组形式的 `degreesPerBlock` |
+| `speed` | `1.0` | 速度倍率；`2.0` 是两倍滚动量，`0.0` 则不滚 |
 
-轴的含义：
+固定轴模式：
 
-- `auto`：绕“上方向 × 水平位移”翻滚，也就是原来的伙伴方块式滚动
+- `auto`：绕“上方向 × 水平位移”翻滚，原来的伙伴方块式滚动
 - `x`：绕世界 X 轴，按 Z 方向位移滚动（前后翻）
 - `y`：绕世界 Y 轴，按水平位移自转（像陀螺）
 - `z`：绕世界 Z 轴，按 X 方向位移滚动（左右翻）
+- `none`：不滚
+
+## 自由轴（任意方向）
+
+最直接的方式是把 `axis` 写成三维方向向量：
+
+```json
+{
+  "enabled": true,
+  "axis": [1.0, 0.35, 0.2],
+  "degreesPerBlock": 90.0,
+  "speed": 1.0
+}
+```
+
+等价写法：
+
+```json
+{
+  "enabled": true,
+  "axis": "free",
+  "freeAxis": [1.0, 0.35, 0.2],
+  "degreesPerBlock": 90.0,
+  "speed": 1.0
+}
+```
+
+向量会自动归一化； `[0,0,0]` 无效，会退回 `auto`。自由轴模式按**实际移动距离**累计角度，不按分量投影。
+
+## 三轴旋转 / Euler 模式
+
+如果希望同时指定绕 X、Y、Z 的旋转量：
+
+```json
+{
+  "enabled": true,
+  "axis": "euler",
+  "degreesPerBlock": [90.0, 45.0, 0.0],
+  "speed": 1.0
+}
+```
+
+也可以写对象形式：
+
+```json
+{
+  "enabled": true,
+  "axis": "euler",
+  "euler": { "x": 90.0, "y": 45.0, "z": 0.0 },
+  "speed": 1.0
+}
+```
+
+旋转顺序固定为 **XYZ**（先 X，再 Y，再 Z）。顺序不能省略：三维旋转不满足交换律，先绕 X 再绕 Y 和反过来结果不同。
+
+模板目录里附带了两个可直接改的示例：
+
+```text
+example-resourcepack/examples/rolling-free-axis.json
+example-resourcepack/examples/rolling-euler.json
+```
+
+## 常见三轴旋转表示法（背景）
+
+| 表示法 | 编辑方式 | 优点 | 缺点 |
+|---|---|---|---|
+| 欧拉角 | 三个角度 X/Y/Z + 顺序（XYZ、ZYX…） | 直观，Blockbench/Blender 常用 | 顺序敏感，会有万向节死锁 |
+| 轴角 / 旋转向量 | 一个方向轴 + 一个角度 | 最适合“自由轴”，物理含义清楚 | 可视化不如三个角度直观 |
+| 四元数 | `(x, y, z, w)` 四个数 | 无死锁，游戏引擎内部标准 | 手调不直观 |
+| 旋转矩阵 | 3×3 矩阵 | 数学定义完整 | 9 个数，最不适合手填 |
+
+这个模组的渲染器内部已经用四元数累积姿态；`rolling.json` 只是**编写格式**：固定轴/自由轴会被转成轴角，再转成四元数；欧拉模式则按 XYZ 顺序转成四元数。
 
 说明：
 

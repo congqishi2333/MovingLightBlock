@@ -28,6 +28,7 @@
 > 1.6.0 实体改为完全无敌，并修复站在伤害方块上被误判卡墙而瞬移的问题。
 > 1.6.1 隐藏光照方块改为零碰撞箱/零选中箱，玩家无法再选中或破坏它。
 > 1.7.0 滚动改为客户端计算，可用资源包 `rolling.json` 自定义滚动轴、开关和速度。
+> 1.8.0 `rolling.json` 支持任意自由轴 `[x,y,z]` 和 XYZ 三轴欧拉旋转。
 
 ## 配置
 
@@ -50,7 +51,7 @@
 
 实体直接用原版方块模型系统渲染 `movinglightblock:moving_light_visual`，所以任何标准资源包都能改它的外观。
 
-- 完整格式、固定路径和限制说明：[CUSTOMIZATION.md](CUSTOMIZATION.md)（含 `rolling.json`：滚动轴、是否滚动、速度）
+- 完整格式、固定路径和限制说明：[CUSTOMIZATION.md](CUSTOMIZATION.md)（含 `rolling.json`：固定轴、自由轴 `[x,y,z]`、XYZ 三轴欧拉、开关和速度）
 - 可直接复制使用的资源包模板：[example-resourcepack/](example-resourcepack/)
 
 最简单的做法是覆盖贴图：
@@ -72,7 +73,7 @@ assets/movinglightblock/textures/block/moving_light.png
 .\gradlew.bat build
 ```
 
-产物：`build/libs/movinglightblock-1.7.0.jar`
+产物：`build/libs/movinglightblock-1.8.0.jar`
 
 ## 许可
 

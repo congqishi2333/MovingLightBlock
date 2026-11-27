@@ -138,6 +138,27 @@ public class RollingLightRenderer extends EntityRenderer<RollingLightEntity> {
                         degrees = -dx * factor;
                     }
                 }
+                case FREE -> {
+                    // A custom axis rolls by the actual distance travelled, not just one component.
+                    double travel = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    if (travel > 1.0E-5D) {
+                        axis = this.rollingConfig.freeAxis;
+                        degrees = travel * factor;
+                    }
+                }
+                case EULER -> {
+                    // Three-axis rotation in JOML's XYZ order (X, then Y, then Z).
+                    Vector3f euler = this.rollingConfig.eulerDegrees;
+                    if (euler.x * euler.x + euler.y * euler.y + euler.z * euler.z > 1.0E-6F) {
+                        state.rotation.premul(new Quaternionf().rotationXYZ(
+                                (float) Math.toRadians(euler.x * factor),
+                                (float) Math.toRadians(euler.y * factor),
+                                (float) Math.toRadians(euler.z * factor)));
+                    }
+                }
+                case NONE -> {
+                    // Handled by "enabled" above; kept explicit for exhaustiveness.
+                }
             }
 
             if (axis != null && Math.abs(degrees) > 1.0E-4D) {
