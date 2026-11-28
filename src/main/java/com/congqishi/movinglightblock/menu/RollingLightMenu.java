@@ -37,8 +37,8 @@ import net.neoforged.neoforge.network.IContainerFactory;
  * Workbench-like menu attached to a rolling light.
  *
  * <p>The module slot accepts a crafting table, furnace or chest item. That choice enables the
- * matching panel: 3x3 crafting, smelting, or 18-slot storage. Player inventory is always
- * available at the bottom. Slot positions follow the 176x166 GUI artwork exactly.</p>
+ * matching panel: 3x3 crafting, smelting, or 54-slot double-chest storage. Player inventory is
+ * always available at the bottom. Slot positions follow each mode's GUI artwork exactly.</p>
  */
 public class RollingLightMenu extends AbstractContainerMenu {
     public static final int MODE_NONE = 0;
@@ -53,24 +53,26 @@ public class RollingLightMenu extends AbstractContainerMenu {
     private static final int SMELT_INPUT = 12;
     private static final int SMELT_FUEL = 13;
     private static final int SMELT_RESULT = 14;
+    private static final int STORAGE_COUNT = 54;
     private static final int STORAGE_START = 15;
-    private static final int STORAGE_END = STORAGE_START + 18;
+    private static final int STORAGE_END = STORAGE_START + STORAGE_COUNT;
     private static final int INV_START = STORAGE_END;
     private static final int INV_END = INV_START + 36;
 
     private static final int COOK_TIME = 200;
 
     /** Module slot position for each mode, matching the corresponding GUI texture cell. */
-    private static final int[] MODULE_X = {132, 132, 132, 136};
-    private static final int[] MODULE_Y = {6, 6, 7, 63};
+    private static final int[] MODULE_X = {132, 132, 132, 184};
+    private static final int[] MODULE_Y = {6, 6, 7, 18};
 
     /** Torch slot position for each mode, matching the second top cell in every texture. */
-    private static final int[] TORCH_X = {152, 152, 152, 154};
-    private static final int[] TORCH_Y = {6, 6, 7, 63};
+    private static final int[] TORCH_X = {152, 152, 152, 204};
+    private static final int[] TORCH_Y = {6, 6, 7, 18};
 
     private final RollingLightEntity entity;
     private final int entityId;
     private final Player player;
+    private final Inventory inventory;
     private final Level level;
 
     private final SimpleContainer module = new SimpleContainer(1);
@@ -80,9 +82,11 @@ public class RollingLightMenu extends AbstractContainerMenu {
     private final SimpleContainer smeltInput = new SimpleContainer(1);
     private final SimpleContainer smeltFuel = new SimpleContainer(1);
     private final SimpleContainer smeltOutput = new SimpleContainer(1);
-    private final SimpleContainer storage = new SimpleContainer(18);
+    private final SimpleContainer storage = new SimpleContainer(STORAGE_COUNT);
     private ModuleSlot moduleSlot;
     private TorchSlot torchSlot;
+    private int layoutMode = -1;
+    private boolean building = true;
 
     private final DataSlot modeData;
     private final DataSlot lightData;
@@ -105,6 +109,7 @@ public class RollingLightMenu extends AbstractContainerMenu {
         this.entity = entity;
         this.entityId = entity == null ? -1 : entity.getId();
         this.player = inventory.player;
+        this.inventory = inventory;
         this.level = inventory.player.level();
 
         this.modeData = DataSlot.standalone();
@@ -146,8 +151,9 @@ public class RollingLightMenu extends AbstractContainerMenu {
         addSlot(new ModeSlot(smeltFuel, 0, 152, 7, MODE_SMELTING, false));
         addSlot(new ModeSlot(smeltOutput, 0, 130, 40, MODE_SMELTING, true));
 
-        for (int i = 0; i < 18; i++) {
-            addSlot(new ModeSlot(storage, i, 64 + (i % 6) * 18, 7 + (i / 6) * 18,
+        // Storage mode uses the vanilla double-chest layout: 9 columns by 6 rows on the left.
+        for (int i = 0; i < STORAGE_COUNT; i++) {
+            addSlot(new ModeSlot(storage, i, 8 + (i % 9) * 18, 18 + (i / 9) * 18,
                     MODE_STORAGE, false));
         }
 
@@ -160,6 +166,9 @@ public class RollingLightMenu extends AbstractContainerMenu {
             addSlot(new Slot(inventory, col, 8 + col * 18, 142));
         }
 
+        // Stored contents may already have filled the module slot while the menu was still
+        // being assembled. Apply the final mode only after every slot exists.
+        this.building = false;
         slotsChanged(module);
     }
 
@@ -177,20 +186,36 @@ public class RollingLightMenu extends AbstractContainerMenu {
         if (mode < 0 || mode >= MODULE_X.length) {
             mode = MODE_NONE;
         }
+        if (mode == this.layoutMode) {
+            return;
+        }
+        this.layoutMode = mode;
+
         int mx = MODULE_X[mode];
         int my = MODULE_Y[mode];
         int tx = TORCH_X[mode];
         int ty = TORCH_Y[mode];
-        if (this.moduleSlot != null && this.torchSlot != null
-                && this.moduleSlot.x == mx && this.moduleSlot.y == my
-                && this.torchSlot.x == tx && this.torchSlot.y == ty) {
-            return;
-        }
         this.slots.removeIf(slot -> slot == this.moduleSlot || slot == this.torchSlot);
         this.torchSlot = new TorchSlot(this.torches, 0, tx, ty);
         this.moduleSlot = new ModuleSlot(this.module, 0, mx, my);
         this.slots.add(0, this.torchSlot);
         this.slots.add(0, this.moduleSlot);
+
+        // Storage mode is taller, so the player inventory moves down to the vanilla
+        // double-chest positions. Replacing slots in place keeps their indices stable.
+        boolean large = mode == MODE_STORAGE;
+        int mainY = large ? 140 : 84;
+        int hotbarY = large ? 198 : 142;
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 9; col++) {
+                this.slots.set(INV_START + row * 9 + col,
+                        new Slot(this.inventory, 9 + row * 9 + col, 8 + col * 18, mainY + row * 18));
+            }
+        }
+        for (int col = 0; col < 9; col++) {
+            this.slots.set(INV_START + 27 + col,
+                    new Slot(this.inventory, col, 8 + col * 18, hotbarY));
+        }
     }
 
     public boolean isTorchSlot(Slot slot) {
@@ -324,9 +349,18 @@ public class RollingLightMenu extends AbstractContainerMenu {
     @Override
     public void slotsChanged(Container container) {
         super.slotsChanged(container);
+        if (this.building) {
+            return;
+        }
         int mode = modeOf(module.getItem(0));
-        if (mode != modeData.get()) {
+        boolean changed = mode != modeData.get();
+        if (changed) {
             modeData.set(mode);
+            // Push the new mode to the client immediately; otherwise the panel only
+            // appears after another inventory refresh or on the next GUI open.
+            if (!level.isClientSide) {
+                broadcastChanges();
+            }
         }
         updateSpecialSlots();
         if (mode == MODE_CRAFTING && !level.isClientSide) {
