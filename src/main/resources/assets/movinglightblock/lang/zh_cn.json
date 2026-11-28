@@ -27,6 +27,7 @@
   "message.movinglightblock.sound_no_files": "没有找到 .ogg 文件",
   "message.movinglightblock.retracted": "已收回跟随光明方块",
   "message.movinglightblock.not_owner": "这个光明方块属于其他玩家",
+  "message.movinglightblock.module_locked": "当前存有物品，请取出后再进行更换",
   "movinglightblock.configuration.general": "基本设置",
   "movinglightblock.configuration.enabled": "启用跟随光明",
   "movinglightblock.configuration.enabled.tooltip": "关闭后完全禁用跟随光明方块。",

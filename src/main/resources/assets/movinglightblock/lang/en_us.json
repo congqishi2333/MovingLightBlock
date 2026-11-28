@@ -27,6 +27,7 @@
   "message.movinglightblock.sound_no_files": "No .ogg files found",
   "message.movinglightblock.retracted": "Moving light picked up",
   "message.movinglightblock.not_owner": "This light belongs to another player",
+  "message.movinglightblock.module_locked": "Items are still stored inside. Remove them before changing the module.",
   "movinglightblock.configuration.general": "General",
   "movinglightblock.configuration.enabled": "Enable following light",
   "movinglightblock.configuration.enabled.tooltip": "Turn off to disable the following light block entirely.",

@@ -8,6 +8,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.Container;
@@ -202,6 +203,33 @@ public class RollingLightMenu extends AbstractContainerMenu {
 
     public boolean isTorchSlot(Slot slot) {
         return slot != null && slot == this.torchSlot;
+    }
+
+    /** True when any GUI-owned container still holds something other than the light torches. */
+    private boolean hasStoredItems() {
+        return hasAny(crafting) || hasAny(craftResult) || hasAny(smeltInput)
+                || hasAny(smeltFuel) || hasAny(smeltOutput) || hasAny(storage);
+    }
+
+    private static boolean hasAny(Container container) {
+        for (int i = 0; i < container.getContainerSize(); i++) {
+            if (!container.getItem(i).isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Refuses a module change while contents remain, and explains why on the server. */
+    private boolean canChangeModule(Player player) {
+        if (!hasStoredItems()) {
+            return true;
+        }
+        if (player != null && !player.level().isClientSide) {
+            player.sendSystemMessage(
+                    Component.translatable("message.movinglightblock.module_locked"));
+        }
+        return false;
     }
 
     /** Number of torches installed in the cube, which is also its real block light level. */
@@ -472,6 +500,9 @@ public class RollingLightMenu extends AbstractContainerMenu {
         ItemStack original = stack.copy();
         int mode = modeData.get();
 
+        if (index == MODULE_SLOT && !canChangeModule(player)) {
+            return ItemStack.EMPTY;
+        }
         if (index == TORCH_SLOT) {
             if (!moveItemStackTo(stack, INV_START, INV_END, false)) {
                 return ItemStack.EMPTY;
@@ -632,6 +663,11 @@ public class RollingLightMenu extends AbstractContainerMenu {
         @Override
         public boolean mayPlace(ItemStack stack) {
             return isModuleItem(stack) && super.mayPlace(stack);
+        }
+
+        @Override
+        public boolean mayPickup(Player player) {
+            return super.mayPickup(player) && canChangeModule(player);
         }
     }
 
