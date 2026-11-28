@@ -54,8 +54,8 @@ public final class FollowLightItem extends Item {
     }
 
     private InteractionResult spawn(ServerLevel level, Player player, ItemStack stack) {
-        // One summoned light per player: return the old cube's contents to the player before
-        // discarding it, so replacing a cube never silently destroys stored items.
+        // One summoned light per player: move the old cube's GUI contents into the item that
+        // is placing the replacement, so nothing is dropped or lost when it is replaced.
         RollingLightEntity old = LightFollower.getOwned(player.getUUID());
         RollingLightMenu openMenu = player.containerMenu instanceof RollingLightMenu menu
                 && menu.getEntity() == old ? menu : null;
@@ -63,10 +63,12 @@ public final class FollowLightItem extends Item {
             if (openMenu != null) {
                 openMenu.saveToEntity();
             }
-            RollingLightMenu.returnStoredItems(player, old.getStoredMenu(),
-                    old.getLightLevel(), level.registryAccess());
+            CompoundTag oldContents = old.getStoredMenu().copy();
+            oldContents.putInt("LightLevel", old.getLightLevel());
+            stack.set(ModDataComponents.STORED_ITEMS.get(), oldContents);
             if (openMenu != null) {
-                // Already returned above; do not hand the same items out again on GUI close.
+                // The contents now live in the placement item; do not return them again when
+                // the replacement cube's GUI is closed.
                 openMenu.clearContents();
             }
         }
