@@ -177,7 +177,10 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         super.render(guiGraphics, mouseX, mouseY, partialTick);
-        drawCustomTooltip(mouseX, mouseY);
+        // Custom icons/preview use the queue; item slots keep the vanilla chest-style tooltip.
+        if (!drawCustomTooltip(mouseX, mouseY)) {
+            super.renderTooltip(guiGraphics, mouseX, mouseY);
+        }
     }
 
     /** 1.21.1 renders tooltips after render(), so queue them for the current frame here. */
@@ -185,7 +188,8 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
         this.setTooltipForNextRenderPass(lines.stream().map(Component::getVisualOrderText).toList());
     }
 
-    private void drawCustomTooltip(int mouseX, int mouseY) {
+    /** Returns true when a custom hint was queued; false leaves the slot to vanilla item tooltips. */
+    private boolean drawCustomTooltip(int mouseX, int mouseY) {
         int localX = mouseX - this.leftPos;
         int localY = mouseY - this.topPos;
         int mode = menu.getMode();
@@ -201,16 +205,20 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
                 showTooltip(List.of(
                         Component.translatable("gui.movinglightblock.tooltip." + icons[i]),
                         Component.translatable("gui.movinglightblock.tooltip." + icons[i] + ".desc")));
-                return;
+                return true;
             }
         }
 
-        if (menu.isTorchSlot(this.hoveredSlot)) {
+        // A slot holding an item must behave exactly like a chest slot: show that item's tooltip.
+        boolean slotHasItem = this.hoveredSlot != null && this.hoveredSlot.hasItem()
+                && menu.getCarried().isEmpty();
+
+        if (menu.isTorchSlot(this.hoveredSlot) && !slotHasItem) {
             showTooltip(List.of(Component.translatable(
                     "gui.movinglightblock.torch", menu.getLightLevel(), 15)));
-            return;
+            return true;
         }
-        if (menu.isModuleSlot(this.hoveredSlot)) {
+        if (menu.isModuleSlot(this.hoveredSlot) && !slotHasItem) {
             List<Component> lines = new ArrayList<>();
             lines.add(Component.translatable("gui.movinglightblock.tooltip.module"));
             lines.add(Component.translatable("gui.movinglightblock.tooltip.module.desc"));
@@ -218,7 +226,7 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
                 lines.add(Component.translatable("gui.movinglightblock.tooltip.module.lock"));
             }
             showTooltip(lines);
-            return;
+            return true;
         }
 
         boolean crafting = mode == RollingLightMenu.MODE_CRAFTING;
@@ -229,6 +237,8 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
             showTooltip(List.of(
                     Component.translatable("gui.movinglightblock.tooltip.preview"),
                     Component.translatable("gui.movinglightblock.tooltip.preview.desc")));
+            return true;
         }
+        return false;
     }
 }
