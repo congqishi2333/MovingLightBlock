@@ -156,8 +156,11 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
         Lighting.setupForEntityInInventory();
         EntityRenderDispatcher dispatcher = Minecraft.getInstance().getEntityRenderDispatcher();
         dispatcher.setRenderShadow(false);
+        // Preview follows the installed torches; keep a little ambient light so the model
+        // stays visible at zero instead of turning into a black square.
+        int previewLight = Math.max(4, menu.getLightLevel()) << 4;
         RenderSystem.runAsFancy(() -> dispatcher.render(entity, 0.0D, 0.0D, 0.0D,
-                0.0F, partialTick, pose, guiGraphics.bufferSource(), 0xF000F0));
+                0.0F, partialTick, pose, guiGraphics.bufferSource(), previewLight));
         guiGraphics.flush();
         dispatcher.setRenderShadow(true);
         Lighting.setupFor3DItems();

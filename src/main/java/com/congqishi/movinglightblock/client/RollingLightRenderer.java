@@ -4,9 +4,11 @@ import com.congqishi.movinglightblock.MovingLightBlockMod;
 import com.congqishi.movinglightblock.entity.RollingLightEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.BlockRenderDispatcher;
+import net.minecraft.core.BlockPos;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.texture.OverlayTexture;
@@ -30,7 +32,6 @@ import java.util.UUID;
 public class RollingLightRenderer extends EntityRenderer<RollingLightEntity> {
     private static final ResourceLocation TEXTURE =
             ResourceLocation.fromNamespaceAndPath(MovingLightBlockMod.MODID, "textures/block/moving_light.png");
-    private static final int FULL_BRIGHT = 0xF000F0;
 
     private final BlockRenderDispatcher blockRenderer;
     private final BlockState renderState;
@@ -77,11 +78,15 @@ public class RollingLightRenderer extends EntityRenderer<RollingLightEntity> {
         poseStack.mulPose(rotation);
         poseStack.translate(-0.5D, -0.5D, -0.5D);
 
+        // Use the real light at the cube's position. Rendering with a fixed full-bright value
+        // made the cube look lit even when its hidden block emitted zero light.
+        int worldLight = LevelRenderer.getLightColor(entity.level(),
+                BlockPos.containing(entity.getX(), entity.getY(), entity.getZ()));
         this.blockRenderer.renderSingleBlock(
                 this.renderState,
                 poseStack,
                 bufferSource,
-                FULL_BRIGHT,
+                worldLight,
                 OverlayTexture.NO_OVERLAY,
                 ModelData.EMPTY,
                 RenderType.solid());
