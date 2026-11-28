@@ -29,6 +29,11 @@ public final class MovingLightBlock extends Block {
     public MovingLightBlock() {
         super(BlockBehaviour.Properties.of()
                 .noCollission()
+                // LightFollower.findTarget() uses BlockState.canBeReplaced(), which reads this
+                // cached flag - not the canBeReplaced(BlockPlaceContext) override below. Without
+                // it our own light is not a valid target cell, so the block alternates between
+                // two cells every tick and the light visibly flickers even when standing still.
+                .replaceable()
                 .strength(Block.INDESTRUCTIBLE, 3600000.0F)
                 .sound(SoundType.GLASS)
                 .lightLevel(state -> state.getValue(LEVEL)));
