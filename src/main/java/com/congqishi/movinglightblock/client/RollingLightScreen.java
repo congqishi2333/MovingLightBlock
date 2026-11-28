@@ -17,7 +17,7 @@ import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import org.joml.Quaternionf;
 
-/** GUI backed by the supplied mode textures; storage uses a larger double-chest layout. */
+/** GUI backed by the three mode-specific 176x166 textures supplied for this mod. */
 public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu> {
     private static final ResourceLocation TEXTURE_CRAFTING = gui("rolling_light_crafting.png");
     private static final ResourceLocation TEXTURE_SMELTING = gui("rolling_light_smelting.png");
@@ -33,9 +33,7 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
             {9, 64, 26, 65, 44, 65}, // no module
             {8, 64, 26, 63, 44, 63}, // crafting
             {9, 66, 26, 65, 44, 65}, // smelting
-            {RollingLightMenu.scaleX(9), RollingLightMenu.scaleY(64),
-                    RollingLightMenu.scaleX(25), RollingLightMenu.scaleY(63),
-                    RollingLightMenu.scaleX(43), RollingLightMenu.scaleY(64)} // scaled storage artwork
+            {9, 64, 25, 63, 43, 64}  // storage
     };
     private static final int BUTTON_SIZE = 16;
 
@@ -58,22 +56,8 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
         };
     }
 
-    /** Resizes and recenters the screen when the module slot changes mode. */
-    private void applySize() {
-        boolean large = menu.getMode() == RollingLightMenu.MODE_STORAGE;
-        int width = large ? RollingLightMenu.STORAGE_GUI_WIDTH : 176;
-        int height = large ? RollingLightMenu.STORAGE_GUI_HEIGHT : 166;
-        if (this.imageWidth != width || this.imageHeight != height) {
-            this.imageWidth = width;
-            this.imageHeight = height;
-            this.leftPos = (this.width - width) / 2;
-            this.topPos = (this.height - height) / 2;
-        }
-    }
-
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        applySize();
         if (button == 0) {
             int localX = (int) (mouseX - this.leftPos);
             int localY = (int) (mouseY - this.topPos);
@@ -121,7 +105,6 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
 
     @Override
     protected void renderBg(GuiGraphics guiGraphics, float partialTick, int mouseX, int mouseY) {
-        applySize();
         PoseStack pose = guiGraphics.pose();
         pose.pushPose();
         pose.translate(this.leftPos, this.topPos, 0.0F);
@@ -158,18 +141,14 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
             return;
         }
 
-        int mode = menu.getMode();
-        boolean crafting = mode == RollingLightMenu.MODE_CRAFTING;
-        boolean largeStorage = mode == RollingLightMenu.MODE_STORAGE;
-        float centerX = largeStorage ? RollingLightMenu.scaleX(34) : (crafting ? 32.0F : 34.0F);
-        float centerY = largeStorage ? RollingLightMenu.scaleY(33) : (crafting ? 32.0F : 33.0F);
-        float scale = largeStorage
-                ? 40.0F * RollingLightMenu.STORAGE_GUI_WIDTH / 176.0F : 40.0F;
+        boolean crafting = menu.getMode() == RollingLightMenu.MODE_CRAFTING;
+        float centerX = crafting ? 32.0F : 34.0F;
+        float centerY = crafting ? 32.0F : 33.0F;
 
         PoseStack pose = guiGraphics.pose();
         pose.pushPose();
         pose.translate(centerX, centerY, 50.0F);
-        pose.scale(scale, scale, -scale);
+        pose.scale(40.0F, 40.0F, -40.0F);
         pose.translate(0.0F, -0.5F, 0.0F);
         pose.mulPose(new Quaternionf().rotationY(0.7F));
         pose.mulPose(new Quaternionf().rotationX(-0.35F));
