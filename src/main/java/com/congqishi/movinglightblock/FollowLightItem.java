@@ -54,8 +54,8 @@ public final class FollowLightItem extends Item {
     }
 
     private InteractionResult spawn(ServerLevel level, Player player, ItemStack stack) {
-        // One summoned light per player: move the old cube's GUI contents into the item
-        // that is about to place the replacement, then discard the old entity.
+        // One summoned light per player: return the old cube's contents to the player before
+        // discarding it, so replacing a cube never silently destroys stored items.
         RollingLightEntity old = LightFollower.getOwned(player.getUUID());
         RollingLightMenu openMenu = player.containerMenu instanceof RollingLightMenu menu
                 && menu.getEntity() == old ? menu : null;
@@ -63,12 +63,10 @@ public final class FollowLightItem extends Item {
             if (openMenu != null) {
                 openMenu.saveToEntity();
             }
-            CompoundTag oldContents = old.getStoredMenu().copy();
-            oldContents.putInt("LightLevel", old.getLightLevel());
-            stack.set(ModDataComponents.STORED_ITEMS.get(), oldContents);
+            RollingLightMenu.returnStoredItems(player, old.getStoredMenu(),
+                    old.getLightLevel(), level.registryAccess());
             if (openMenu != null) {
-                // The contents now live in the placement item; do not return them again
-                // when the replacement cube's GUI is closed.
+                // Already returned above; do not hand the same items out again on GUI close.
                 openMenu.clearContents();
             }
         }
@@ -79,15 +77,15 @@ public final class FollowLightItem extends Item {
             return InteractionResult.FAIL;
         }
 
+        // Items from an older v1.19.x placement item are still restored into the new cube.
         CompoundTag stored = stack.get(ModDataComponents.STORED_ITEMS.get());
         if (stored != null) {
             entity.setStoredMenu(stored);
             if (stored.contains("LightLevel")) {
                 entity.setLightLevel(stored.getInt("LightLevel"));
             }
+            stack.remove(ModDataComponents.STORED_ITEMS.get());
         }
-        // The contents now belong to the entity, not to the remaining stack in hand.
-        stack.remove(ModDataComponents.STORED_ITEMS.get());
         entity.setPos(LightFollower.findSpawnPos(level, (ServerPlayer) player));
         entity.setOwner(player.getUUID());
         level.addFreshEntity(entity);

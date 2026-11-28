@@ -3,7 +3,6 @@ package com.congqishi.movinglightblock;
 import com.congqishi.movinglightblock.entity.RollingLightEntity;
 import com.congqishi.movinglightblock.menu.RollingLightMenu;
 import com.congqishi.movinglightblock.network.RetractPayload;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -119,22 +118,19 @@ public class MovingLightBlockMod {
             return;
         }
 
-        // Save the GUI contents into the returned item before the entity disappears.
+        // Return everything directly to the player, just like breaking a chest.
         RollingLightMenu openMenu = player.containerMenu instanceof RollingLightMenu menu
                 && menu.getEntity() == light ? menu : null;
         if (openMenu != null) {
             openMenu.saveToEntity();
         }
-        CompoundTag contents = light.getStoredMenu().copy();
-        contents.putInt("LightLevel", light.getLightLevel());
-        ItemStack item = new ItemStack(MOVING_LIGHT_ITEM.get());
-        if (!contents.isEmpty()) {
-            item.set(ModDataComponents.STORED_ITEMS.get(), contents);
-        }
+        RollingLightMenu.returnStoredItems(player, light.getStoredMenu(),
+                light.getLightLevel(), player.level().registryAccess());
         if (openMenu != null) {
-            // The contents now live in the item; avoid returning them again when the GUI closes.
+            // Already returned above; do not hand the same items out again when the GUI closes.
             openMenu.clearContents();
         }
+        ItemStack item = new ItemStack(MOVING_LIGHT_ITEM.get());
         LightFollower.discardOwned(player.getUUID());
         if (!player.getInventory().add(item)) {
             player.drop(item, false);

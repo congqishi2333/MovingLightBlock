@@ -288,6 +288,41 @@ public class RollingLightMenu extends AbstractContainerMenu {
         }
     }
 
+    /**
+     * Gives everything the player put into the cube straight back to them when the cube is
+     * retracted. This is the same behaviour as breaking a chest: items must never vanish.
+     */
+    public static void returnStoredItems(Player player, CompoundTag tag, int torchCount,
+                                         HolderLookup.Provider registries) {
+        give(player, loadStack(tag, "Module", registries));
+        give(player, loadStack(tag, "CraftResult", registries));
+        give(player, loadStack(tag, "SmeltInput", registries));
+        give(player, loadStack(tag, "SmeltFuel", registries));
+        give(player, loadStack(tag, "SmeltOutput", registries));
+        giveList(player, tag.getList("Crafting", Tag.TAG_COMPOUND), registries);
+        giveList(player, tag.getList("Storage", Tag.TAG_COMPOUND), registries);
+        if (torchCount > 0) {
+            give(player, new ItemStack(Items.TORCH, Mth.clamp(torchCount, 0, 64)));
+        }
+    }
+
+    private static void giveList(Player player, ListTag list, HolderLookup.Provider registries) {
+        for (Tag tag : list) {
+            if (tag instanceof CompoundTag compound) {
+                give(player, ItemStack.parseOptional(registries, compound));
+            }
+        }
+    }
+
+    private static void give(Player player, ItemStack stack) {
+        if (stack.isEmpty()) {
+            return;
+        }
+        if (!player.getInventory().add(stack)) {
+            player.drop(stack, false);
+        }
+    }
+
     public int getSmeltProgress() {
         return progressData.get();
     }
