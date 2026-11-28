@@ -305,10 +305,16 @@ public final class LightFollower {
     }
 
     private static void restore(Placement placement) {
+        Level level = placement.level();
+        // getBlockState() force-loads the chunk. During shutdown that chunk work can no
+        // longer finish, so the server thread waits forever. Never restore a placement
+        // whose chunk is already unloaded.
+        if (!level.isLoaded(placement.pos())) {
+            return;
+        }
         // Only restore if the block is still ours; another mod/player may have changed it.
-        if (placement.level().getBlockState(placement.pos())
-                .is(MovingLightBlockMod.MOVING_LIGHT.get())) {
-            placement.level().setBlock(placement.pos(), placement.previous(), Block.UPDATE_ALL);
+        if (level.getBlockState(placement.pos()).is(MovingLightBlockMod.MOVING_LIGHT.get())) {
+            level.setBlock(placement.pos(), placement.previous(), Block.UPDATE_ALL);
         }
     }
 }

@@ -18,7 +18,7 @@ import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -95,7 +95,10 @@ public class MovingLightBlockMod {
         // simply resumes following when this player comes back online.
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerChangedDimensionEvent event) ->
                 LightFollower.relocate((ServerPlayer) event.getEntity()));
-        NeoForge.EVENT_BUS.addListener((ServerStoppedEvent event) -> LightFollower.clearAll());
+        // Restore hidden light blocks before Minecraft saves/unloads worlds. Doing this on
+        // ServerStoppedEvent was after saving, and getBlockState() there forced chunk loads
+        // that could never complete, leaving the game stuck on the saving-world screen.
+        NeoForge.EVENT_BUS.addListener((ServerStoppingEvent event) -> LightFollower.clearAll());
     }
 
     private static void handleRetract(RetractPayload payload, IPayloadContext context) {
