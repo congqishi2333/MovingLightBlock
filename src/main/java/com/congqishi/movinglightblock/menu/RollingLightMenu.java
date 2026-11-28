@@ -17,6 +17,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.ResultContainer;
 import net.minecraft.world.inventory.ResultSlot;
@@ -33,6 +34,8 @@ import net.minecraft.world.item.crafting.SmeltingRecipe;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.common.extensions.IItemStackExtension;
 import net.neoforged.neoforge.network.IContainerFactory;
+
+import java.util.List;
 
 /**
  * Workbench-like menu attached to a rolling light.
@@ -167,7 +170,7 @@ public class RollingLightMenu extends AbstractContainerMenu {
         // Stored contents may already have filled the module slot while the menu was still
         // being assembled. Apply the final mode only after every slot exists.
         this.building = false;
-        slotsChanged(module);
+        refreshMode();
     }
 
     public int getMode() {
@@ -176,8 +179,8 @@ public class RollingLightMenu extends AbstractContainerMenu {
 
     /**
      * Rebuilds the module and torch slots on the cells drawn in the current mode's texture.
-     * Slot.x/y are final, so the slots are replaced rather than moved; keeping them at index 0
-     * and 1 preserves the indices used by quick-move logic.
+     * Slot.x/y are final, so the slots are replaced in place; position 0 stays the module and
+     * position 1 stays the torch, keeping the indices used by clicks and quick-move stable.
      */
     public void updateSpecialSlots() {
         int mode = modeData.get();
@@ -189,16 +192,15 @@ public class RollingLightMenu extends AbstractContainerMenu {
         }
         this.layoutMode = mode;
 
-        int mx = MODULE_X[mode];
-        int my = MODULE_Y[mode];
-        int tx = TORCH_X[mode];
-        int ty = TORCH_Y[mode];
-        this.slots.removeIf(slot -> slot == this.moduleSlot || slot == this.torchSlot);
-        this.torchSlot = new TorchSlot(this.torches, 0, tx, ty);
-        this.moduleSlot = new ModuleSlot(this.module, 0, mx, my);
-        this.slots.add(0, this.torchSlot);
-        this.slots.add(0, this.moduleSlot);
-
+        ModuleSlot newModule = new ModuleSlot(this.module, 0, MODULE_X[mode], MODULE_Y[mode]);
+        TorchSlot newTorch = new TorchSlot(this.torches, 0, TORCH_X[mode], TORCH_Y[mode]);
+        // Slot.index is assigned by addSlot(), but these replacements are inserted with set().
+        newModule.index = MODULE_SLOT;
+        newTorch.index = TORCH_SLOT;
+        this.moduleSlot = newModule;
+        this.torchSlot = newTorch;
+        this.slots.set(MODULE_SLOT, newModule);
+        this.slots.set(TORCH_SLOT, newTorch);
     }
 
     public boolean isTorchSlot(Slot slot) {
@@ -366,18 +368,19 @@ public class RollingLightMenu extends AbstractContainerMenu {
                 && player.distanceToSqr(tracked) <= 64.0D;
     }
 
-    @Override
-    public void slotsChanged(Container container) {
-        super.slotsChanged(container);
+    /**
+     * Re-evaluates the active module after every inventory change. Plain containers do not
+     * notify the menu, so relying on slotsChanged() alone left the mode stale and shift-clicked
+     * items landed in the previous mode's slots (where they looked swallowed after a relog).
+     */
+    private void refreshMode() {
         if (this.building) {
             return;
         }
         int mode = modeOf(module.getItem(0));
-        boolean changed = mode != modeData.get();
-        if (changed) {
+        if (mode != modeData.get()) {
             modeData.set(mode);
-            // Push the new mode to the client immediately; otherwise the panel only
-            // appears after another inventory refresh or on the next GUI open.
+            // Push the new mode to the client immediately, without waiting for a reopen.
             if (!level.isClientSide) {
                 broadcastChanges();
             }
@@ -386,6 +389,30 @@ public class RollingLightMenu extends AbstractContainerMenu {
         if (mode == MODE_CRAFTING && !level.isClientSide) {
             updateCraftResult();
         }
+    }
+
+    @Override
+    public void clicked(int slotId, int button, ClickType clickType, Player player) {
+        super.clicked(slotId, button, clickType, player);
+        refreshMode();
+    }
+
+    @Override
+    public void setItem(int slotId, int id, ItemStack stack) {
+        super.setItem(slotId, id, stack);
+        refreshMode();
+    }
+
+    @Override
+    public void initializeContents(int containerId, List<ItemStack> items, ItemStack carried) {
+        super.initializeContents(containerId, items, carried);
+        refreshMode();
+    }
+
+    @Override
+    public void slotsChanged(Container container) {
+        super.slotsChanged(container);
+        refreshMode();
     }
 
     /** Called once per server tick by {@code MovingLightBlockMod} while this menu is open. */
