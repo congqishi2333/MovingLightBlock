@@ -1,6 +1,7 @@
 package com.congqishi.movinglightblock;
 
 import com.congqishi.movinglightblock.entity.RollingLightEntity;
+import com.congqishi.movinglightblock.menu.RollingLightMenu;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -90,6 +91,16 @@ public final class LightFollower {
         return null;
     }
 
+    /** True when a player currently has this cube's management GUI open. */
+    private static boolean hasOpenMenu(RollingLightEntity entity) {
+        for (ServerPlayer player : entity.level().getServer().getPlayerList().getPlayers()) {
+            if (player.containerMenu instanceof RollingLightMenu menu && menu.getEntity() == entity) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static void onServerTick(ServerTickEvent.Post event) {
         Iterator<Map.Entry<UUID, RollingLightEntity>> iterator = ENTITIES.entrySet().iterator();
         while (iterator.hasNext()) {
@@ -100,6 +111,12 @@ public final class LightFollower {
                 clearBlock(id);
                 iterator.remove();
                 continue;
+            }
+
+            // The furnace keeps running even when nobody has the cube's GUI open.
+            // An open menu is ticked separately by MovingLightBlockMod, so skip it here.
+            if (!hasOpenMenu(entity)) {
+                RollingLightMenu.tickStoredSmelting(entity);
             }
 
             Placement placement = PLACEMENTS.get(id);

@@ -262,6 +262,9 @@ public class RollingLightMenu extends AbstractContainerMenu {
         smeltOutput.setItem(0, loadStack(tag, "SmeltOutput", registries));
         loadStacks(tag.getList("Crafting", Tag.TAG_COMPOUND), registries, crafting);
         loadStacks(tag.getList("Storage", Tag.TAG_COMPOUND), registries, storage);
+        this.burnTime = tag.getInt("BurnTime");
+        this.burnDuration = tag.getInt("BurnDuration");
+        this.smeltProgress = tag.getInt("CookTime");
     }
 
     /** Writes the current GUI contents back to the cube so they survive close/retract. */
@@ -278,6 +281,9 @@ public class RollingLightMenu extends AbstractContainerMenu {
         saveStack(tag, "SmeltOutput", smeltOutput.getItem(0), registries);
         tag.put("Crafting", saveStacks(registries, crafting.getContainerSize(), crafting::getItem));
         tag.put("Storage", saveStacks(registries, storage.getContainerSize(), storage::getItem));
+        tag.putInt("BurnTime", burnTime);
+        tag.putInt("BurnDuration", burnDuration);
+        tag.putInt("CookTime", smeltProgress);
         entity.setStoredMenu(tag);
     }
 
@@ -427,42 +433,91 @@ public class RollingLightMenu extends AbstractContainerMenu {
             return;
         }
 
-        ItemStack input = smeltInput.getItem(0);
-        ItemStack output = smeltOutput.getItem(0);
-        RecipeHolder<SmeltingRecipe> recipe = findSmeltingRecipe(input);
+        SmeltState state = advanceSmelting(level, level.registryAccess(),
+                smeltInput, smeltFuel, smeltOutput, burnTime, burnDuration, smeltProgress);
+        burnTime = state.burnTime();
+        burnDuration = state.burnDuration();
+        smeltProgress = state.cookTime();
+        progressData.set(smeltProgress);
+        burnData.set(burnDuration > 0 ? burnTime * COOK_TIME / burnDuration : 0);
+    }
+
+    /**
+     * Keeps a cube's furnace running while its GUI is closed. The stored menu tag is the
+     * single source of truth whenever no player screen is ticking this entity.
+     */
+    public static void tickStoredSmelting(RollingLightEntity entity) {
+        if (entity == null || entity.level().isClientSide) {
+            return;
+        }
+        Level level = entity.level();
+        HolderLookup.Provider registries = level.registryAccess();
+        CompoundTag tag = entity.getStoredMenu().copy();
+        if (modeOf(loadStack(tag, "Module", registries)) != MODE_SMELTING) {
+            return;
+        }
+
+        SimpleContainer input = new SimpleContainer(1);
+        SimpleContainer fuel = new SimpleContainer(1);
+        SimpleContainer output = new SimpleContainer(1);
+        input.setItem(0, loadStack(tag, "SmeltInput", registries));
+        fuel.setItem(0, loadStack(tag, "SmeltFuel", registries));
+        output.setItem(0, loadStack(tag, "SmeltOutput", registries));
+
+        SmeltState state = advanceSmelting(level, registries, input, fuel, output,
+                tag.getInt("BurnTime"), tag.getInt("BurnDuration"), tag.getInt("CookTime"));
+
+        saveStack(tag, "SmeltInput", input.getItem(0), registries);
+        saveStack(tag, "SmeltFuel", fuel.getItem(0), registries);
+        saveStack(tag, "SmeltOutput", output.getItem(0), registries);
+        tag.putInt("BurnTime", state.burnTime());
+        tag.putInt("BurnDuration", state.burnDuration());
+        tag.putInt("CookTime", state.cookTime());
+        entity.setStoredMenu(tag);
+    }
+
+    private record SmeltState(int burnTime, int burnDuration, int cookTime) {
+    }
+
+    /** One furnace tick, shared by the open menu and the closed-cube ticker. */
+    private static SmeltState advanceSmelting(Level level, HolderLookup.Provider registries,
+                                              SimpleContainer input, SimpleContainer fuel,
+                                              SimpleContainer output, int burnTime,
+                                              int burnDuration, int cookTime) {
+        ItemStack inputStack = input.getItem(0);
+        ItemStack outputStack = output.getItem(0);
+        RecipeHolder<SmeltingRecipe> recipe = findSmeltingRecipe(level, inputStack);
         boolean canSmelt = recipe != null && canAcceptOutput(
-                recipe.value().assemble(new SingleRecipeInput(input), level.registryAccess()), output);
+                recipe.value().assemble(new SingleRecipeInput(inputStack), registries), outputStack);
 
         if (burnTime > 0) {
             burnTime--;
         }
 
-        if (burnTime <= 0 && canSmelt && !smeltFuel.getItem(0).isEmpty()) {
-            int fuelTime = smeltFuel.getItem(0).getBurnTime(RecipeType.SMELTING);
+        if (burnTime <= 0 && canSmelt && !fuel.getItem(0).isEmpty()) {
+            int fuelTime = fuel.getItem(0).getBurnTime(RecipeType.SMELTING);
             if (fuelTime > 0) {
                 burnTime = burnDuration = fuelTime;
-                smeltFuel.getItem(0).shrink(1);
-                if (smeltFuel.getItem(0).isEmpty()) {
-                    smeltFuel.setItem(0, ItemStack.EMPTY);
+                fuel.getItem(0).shrink(1);
+                if (fuel.getItem(0).isEmpty()) {
+                    fuel.setItem(0, ItemStack.EMPTY);
                 }
             }
         }
 
         if (burnTime > 0 && canSmelt) {
-            smeltProgress++;
-            if (smeltProgress >= COOK_TIME) {
-                smeltItem(recipe, input, output);
-                smeltProgress = 0;
+            cookTime++;
+            if (cookTime >= COOK_TIME) {
+                smeltItem(level, registries, recipe, input, output);
+                cookTime = 0;
             }
         } else if (!canSmelt) {
-            smeltProgress = 0;
+            cookTime = 0;
         }
-
-        progressData.set(smeltProgress);
-        burnData.set(burnDuration > 0 ? burnTime * COOK_TIME / burnDuration : 0);
+        return new SmeltState(burnTime, burnDuration, cookTime);
     }
 
-    private RecipeHolder<SmeltingRecipe> findSmeltingRecipe(ItemStack input) {
+    private static RecipeHolder<SmeltingRecipe> findSmeltingRecipe(Level level, ItemStack input) {
         if (input.isEmpty()) {
             return null;
         }
@@ -482,15 +537,20 @@ public class RollingLightMenu extends AbstractContainerMenu {
                 && output.getCount() + result.getCount() <= output.getMaxStackSize();
     }
 
-    private void smeltItem(RecipeHolder<SmeltingRecipe> recipe, ItemStack input, ItemStack output) {
-        ItemStack result = recipe.value().assemble(new SingleRecipeInput(input), level.registryAccess());
-        input.shrink(1);
-        if (output.isEmpty()) {
-            smeltOutput.setItem(0, result);
-        } else {
-            output.grow(result.getCount());
+    private static void smeltItem(Level level, HolderLookup.Provider registries,
+                                  RecipeHolder<SmeltingRecipe> recipe, SimpleContainer input,
+                                  SimpleContainer output) {
+        ItemStack result = recipe.value().assemble(new SingleRecipeInput(input.getItem(0)), registries);
+        input.getItem(0).shrink(1);
+        if (input.getItem(0).isEmpty()) {
+            input.setItem(0, ItemStack.EMPTY);
         }
-        smeltOutput.setChanged();
+        if (output.getItem(0).isEmpty()) {
+            output.setItem(0, result);
+        } else {
+            output.getItem(0).grow(result.getCount());
+        }
+        output.setChanged();
     }
 
     @Override
