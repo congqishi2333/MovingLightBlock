@@ -6,6 +6,7 @@ import com.congqishi.movinglightblock.ModMenus;
 import com.congqishi.movinglightblock.MovingLightBlockMod;
 import com.congqishi.movinglightblock.entity.RollingLightEntity;
 import com.congqishi.movinglightblock.client.sound.SoundController;
+import com.congqishi.movinglightblock.client.sound.SoundSettings;
 import com.congqishi.movinglightblock.network.RetractPayload;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
@@ -17,6 +18,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -39,6 +41,13 @@ public final class ClientSetup {
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
         SoundController.tick();
+    }
+
+    /** Re-login only refreshes model/sound config files; the summoned cube is left alone. */
+    @SubscribeEvent
+    public static void onLoggingIn(ClientPlayerNetworkEvent.LoggingIn event) {
+        ModelManager.refresh();
+        SoundSettings.reload();
     }
 
     @SubscribeEvent

@@ -42,6 +42,11 @@ public final class ModelManager {
         return revision;
     }
 
+    /** Re-reads the selected preset/resource-pack file without touching any summoned entities. */
+    public static void refresh() {
+        revision++;
+    }
+
     /** Makes sure the built-in presets exist, then returns all selectable names. */
     public static List<String> list() {
         try {

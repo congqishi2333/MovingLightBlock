@@ -4,7 +4,9 @@ import com.congqishi.movinglightblock.entity.RollingLightEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.portal.DimensionTransition;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -107,7 +109,8 @@ public final class LightFollower {
 
             ServerPlayer target = findFollowTarget(level, entity);
             if (target == null) {
-                clearBlock(id);
+                // Owner is offline: keep the cube and its light where they are. Re-login
+                // resumes following; clearing the block here caused a visible light pop.
                 entity.stopFollowing();
                 continue;
             }
@@ -241,6 +244,7 @@ public final class LightFollower {
     }
 
     public static void relocate(ServerPlayer player) {
+        ServerLevel level = (ServerLevel) player.level();
         List<RollingLightEntity> owned = new ArrayList<>();
         for (RollingLightEntity entity : ENTITIES.values()) {
             if (player.getUUID().equals(entity.getOwner())) {
@@ -252,16 +256,18 @@ public final class LightFollower {
             UUID id = entity.getUUID();
             clearBlock(id);
             ENTITIES.remove(id);
-            if (!entity.isRemoved()) {
-                entity.discard();
+            if (entity.isRemoved()) {
+                continue;
             }
 
-            RollingLightEntity replacement = ModEntities.ROLLING_LIGHT.get().create(player.level());
-            if (replacement != null) {
-                replacement.setPos(findTeleportPos((ServerLevel) player.level(), player));
-                replacement.setOwner(player.getUUID());
-                player.level().addFreshEntity(replacement);
-                register(replacement);
+            // Move the same cube across dimensions instead of throwing it away and
+            // summoning a fresh one: its UUID and saved state are carried over.
+            Entity moved = entity.changeDimension(new DimensionTransition(
+                    level, findTeleportPos(level, player), Vec3.ZERO,
+                    entity.getYRot(), entity.getXRot(), DimensionTransition.DO_NOTHING));
+            if (moved instanceof RollingLightEntity light && !light.isRemoved()) {
+                light.stopFollowing();
+                register(light);
             }
         }
     }

@@ -316,9 +316,20 @@ public class RollingLightEntity extends Entity implements MenuProvider {
 
     @Override
     protected void readAdditionalSaveData(CompoundTag compound) {
+        if (compound.hasUUID("Owner")) {
+            this.setOwner(compound.getUUID("Owner"));
+        }
+        // Entities loaded from the world save are not created by FollowLightItem, so they
+        // must be re-registered or the follower would never place their hidden light again.
+        if (!this.level().isClientSide) {
+            com.congqishi.movinglightblock.LightFollower.register(this);
+        }
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag compound) {
+        if (this.owner != null) {
+            compound.putUUID("Owner", this.owner);
+        }
     }
 }

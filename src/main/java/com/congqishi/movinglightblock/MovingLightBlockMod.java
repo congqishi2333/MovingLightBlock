@@ -91,8 +91,8 @@ public class MovingLightBlockMod {
                 }
             }
         });
-        NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent event) ->
-                LightFollower.discardOwned(event.getEntity().getUUID()));
+        // Logout no longer discards the cube: it stays in the world with its light and
+        // simply resumes following when this player comes back online.
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerChangedDimensionEvent event) ->
                 LightFollower.relocate((ServerPlayer) event.getEntity()));
         NeoForge.EVENT_BUS.addListener((ServerStoppedEvent event) -> LightFollower.clearAll());
