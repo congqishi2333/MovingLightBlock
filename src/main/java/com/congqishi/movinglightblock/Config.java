@@ -55,7 +55,7 @@ public final class Config {
                          "to raise the level by one per torch, up to 15. The GUI value is saved",
                          "with the cube and overrides this config after summoning.")
                 .translation("movinglightblock.configuration.lightLevel")
-                .defineInRange("lightLevel", 0, 0, 15);
+                .defineInRange("initialLightLevel", 0, 0, 15);
 
         Y_OFFSET = builder
                 .comment("Vertical offset from the player's feet block where the light is placed.",
