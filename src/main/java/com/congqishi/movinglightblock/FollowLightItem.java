@@ -3,6 +3,7 @@ package com.congqishi.movinglightblock;
 import com.congqishi.movinglightblock.entity.RollingLightEntity;
 import com.congqishi.movinglightblock.menu.RollingLightMenu;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -11,8 +12,10 @@ import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
+import java.util.List;
 
 /**
  * Right-click to summon a rolling light entity that follows its owner.
@@ -23,6 +26,17 @@ import net.minecraft.world.level.Level;
 public final class FollowLightItem extends Item {
     public FollowLightItem() {
         super(new Item.Properties().stacksTo(16));
+    }
+
+    @Override
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context,
+                                List<Component> tooltip, TooltipFlag flag) {
+        tooltip.add(Component.translatable("tooltip.movinglightblock.summon.1"));
+        tooltip.add(Component.translatable("tooltip.movinglightblock.summon.2"));
+        tooltip.add(Component.translatable("tooltip.movinglightblock.summon.3"));
+        if (stack.get(ModDataComponents.STORED_ITEMS.get()) != null) {
+            tooltip.add(Component.translatable("tooltip.movinglightblock.summon.stored"));
+        }
     }
 
     @Override

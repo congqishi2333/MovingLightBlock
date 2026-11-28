@@ -4,13 +4,17 @@ import com.congqishi.movinglightblock.client.sound.SoundController;
 import com.congqishi.movinglightblock.client.sound.SoundSettings;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /** Edits the four JSON-backed sound phases. Opening this screen creates the sound folder. */
@@ -25,6 +29,7 @@ public class SoundSettingsScreen extends Screen {
     private final Map<SoundSettings.Phase, EditBox> files = new EnumMap<>(SoundSettings.Phase.class);
     private final Map<SoundSettings.Phase, EditBox> volumes = new EnumMap<>(SoundSettings.Phase.class);
     private final Map<SoundSettings.Phase, EditBox> speeds = new EnumMap<>(SoundSettings.Phase.class);
+    private final Map<AbstractWidget, List<Component>> tooltips = new HashMap<>();
 
     public SoundSettingsScreen(Screen parent) {
         super(Component.translatable("gui.movinglightblock.sound_title"));
@@ -41,6 +46,7 @@ public class SoundSettingsScreen extends Screen {
     @Override
     protected void init() {
         super.init();
+        this.tooltips.clear();
         int center = this.width / 2;
         int left = center - 125;
         int startY = 44;
@@ -56,6 +62,7 @@ public class SoundSettingsScreen extends Screen {
             file.setMaxLength(96);
             addRenderableWidget(file);
             files.put(phase, file);
+            tip(file, "gui.movinglightblock.tooltip.sound_file.desc");
 
             EditBox volume = new EditBox(this.font, left + 186, y, NUMBER_WIDTH, BUTTON_HEIGHT,
                     Component.translatable("gui.movinglightblock.sound_volume"));
@@ -63,6 +70,7 @@ public class SoundSettingsScreen extends Screen {
             volume.setMaxLength(8);
             addRenderableWidget(volume);
             volumes.put(phase, volume);
+            tip(volume, "gui.movinglightblock.tooltip.sound_volume.desc");
 
             EditBox speed = new EditBox(this.font, left + 236, y, NUMBER_WIDTH, BUTTON_HEIGHT,
                     Component.translatable("gui.movinglightblock.sound_speed"));
@@ -70,20 +78,35 @@ public class SoundSettingsScreen extends Screen {
             speed.setMaxLength(8);
             addRenderableWidget(speed);
             speeds.put(phase, speed);
+            tip(speed, "gui.movinglightblock.tooltip.sound_speed.desc");
         }
 
         int footerY = startY + SoundSettings.Phase.values().length * ROW_HEIGHT + 6;
         int small = 76;
-        this.addRenderableWidget(Button.builder(
+        Button save = Button.builder(
                         Component.translatable("gui.movinglightblock.sound_save"), button -> save())
-                .pos(left, footerY).size(small, BUTTON_HEIGHT).build());
+                .pos(left, footerY).size(small, BUTTON_HEIGHT).build();
+        this.addRenderableWidget(save);
+        tip(save, "gui.movinglightblock.tooltip.sound_save.desc");
 
-        this.addRenderableWidget(Button.builder(
+        Button list = Button.builder(
                         Component.translatable("gui.movinglightblock.sound_list"), button -> listFiles())
-                .pos(left + small + 6, footerY).size(small, BUTTON_HEIGHT).build());
+                .pos(left + small + 6, footerY).size(small, BUTTON_HEIGHT).build();
+        this.addRenderableWidget(list);
+        tip(list, "gui.movinglightblock.tooltip.sound_list.desc");
 
-        this.addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, button -> onClose())
-                .pos(left + 2 * (small + 6), footerY).size(small, BUTTON_HEIGHT).build());
+        Button done = Button.builder(CommonComponents.GUI_DONE, button -> onClose())
+                .pos(left + 2 * (small + 6), footerY).size(small, BUTTON_HEIGHT).build();
+        this.addRenderableWidget(done);
+        tip(done, "gui.movinglightblock.tooltip.done");
+    }
+
+    private void tip(AbstractWidget widget, String... keys) {
+        List<Component> lines = new java.util.ArrayList<>();
+        for (String key : keys) {
+            lines.add(Component.translatable(key));
+        }
+        this.tooltips.put(widget, lines);
     }
 
     private void save() {
@@ -154,6 +177,14 @@ public class SoundSettingsScreen extends Screen {
         }
 
         super.render(guiGraphics, mouseX, mouseY, partialTick);
+        for (GuiEventListener listener : this.children()) {
+            if (listener instanceof AbstractWidget widget && widget.active && widget.isHovered()) {
+                List<Component> lines = this.tooltips.get(widget);
+                if (lines != null) {
+                    guiGraphics.renderComponentTooltip(this.font, lines, mouseX, mouseY);
+                }
+            }
+        }
     }
 
     @Override

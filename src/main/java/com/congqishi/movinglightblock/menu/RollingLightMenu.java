@@ -205,8 +205,12 @@ public class RollingLightMenu extends AbstractContainerMenu {
         return slot != null && slot == this.torchSlot;
     }
 
+    public boolean isModuleSlot(Slot slot) {
+        return slot != null && slot == this.moduleSlot;
+    }
+
     /** True when any GUI-owned container still holds something other than the light torches. */
-    private boolean hasStoredItems() {
+    public boolean hasStoredItems() {
         return hasAny(crafting) || hasAny(craftResult) || hasAny(smeltInput)
                 || hasAny(smeltFuel) || hasAny(smeltOutput) || hasAny(storage);
     }

@@ -2,12 +2,16 @@ package com.congqishi.movinglightblock.client;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.CommonComponents;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /** Lets the player pick one of the JSON presets in config/movinglightblock/models/. */
 public class ModelSelectScreen extends Screen {
@@ -17,6 +21,7 @@ public class ModelSelectScreen extends Screen {
 
     private final Screen parent;
     private final List<String> models;
+    private final Map<AbstractWidget, List<Component>> tooltips = new HashMap<>();
     private int page;
 
     public ModelSelectScreen(Screen parent) {
@@ -32,6 +37,7 @@ public class ModelSelectScreen extends Screen {
     @Override
     protected void init() {
         super.init();
+        this.tooltips.clear();
         int from = page * PER_PAGE;
         int count = Math.min(PER_PAGE, models.size() - from);
         int x = (this.width - BUTTON_WIDTH) / 2;
@@ -46,10 +52,14 @@ public class ModelSelectScreen extends Screen {
                 label = Component.literal("[ ").append(label).append(" ]");
             }
             final String chosen = name;
-            this.addRenderableWidget(Button.builder(label, button -> {
+            Button entry = Button.builder(label, button -> {
                 ModelManager.select(chosen);
                 Minecraft.getInstance().setScreen(parent);
-            }).pos(x, y + i * (BUTTON_HEIGHT + 4)).size(BUTTON_WIDTH, BUTTON_HEIGHT).build());
+            }).pos(x, y + i * (BUTTON_HEIGHT + 4)).size(BUTTON_WIDTH, BUTTON_HEIGHT).build();
+            this.addRenderableWidget(entry);
+            tip(entry,
+                    Component.translatable("gui.movinglightblock.tooltip.model_entry", name),
+                    Component.translatable("gui.movinglightblock.tooltip.model_entry.desc"));
         }
 
         int footerY = Math.min(this.height - 30, y + Math.max(count, 1) * (BUTTON_HEIGHT + 4) + 6);
@@ -59,26 +69,38 @@ public class ModelSelectScreen extends Screen {
         int total = smallWidth * 3 + gap * 2;
         int startX = (this.width - total) / 2;
 
-        this.addRenderableWidget(Button.builder(Component.literal("<"), button -> {
+        Button prev = Button.builder(Component.literal("<"), button -> {
             if (page > 0) {
                 page--;
                 rebuildWidgets();
             }
-        }).pos(startX, footerY).size(smallWidth, BUTTON_HEIGHT).build());
+        }).pos(startX, footerY).size(smallWidth, BUTTON_HEIGHT).build();
+        this.addRenderableWidget(prev);
+        tip(prev, Component.translatable("gui.movinglightblock.tooltip.prev"));
 
-        this.addRenderableWidget(Button.builder(Component.literal((page + 1) + "/" + pages), button -> {
-        }).pos(startX + smallWidth + gap, footerY).size(smallWidth, BUTTON_HEIGHT).build());
+        Button current = Button.builder(Component.literal((page + 1) + "/" + pages), button -> {
+        }).pos(startX + smallWidth + gap, footerY).size(smallWidth, BUTTON_HEIGHT).build();
+        this.addRenderableWidget(current);
+        tip(current, Component.translatable("gui.movinglightblock.tooltip.page"));
 
-        this.addRenderableWidget(Button.builder(Component.literal(">"), button -> {
+        Button next = Button.builder(Component.literal(">"), button -> {
             if (page + 1 < pages) {
                 page++;
                 rebuildWidgets();
             }
-        }).pos(startX + (smallWidth + gap) * 2, footerY).size(smallWidth, BUTTON_HEIGHT).build());
+        }).pos(startX + (smallWidth + gap) * 2, footerY).size(smallWidth, BUTTON_HEIGHT).build();
+        this.addRenderableWidget(next);
+        tip(next, Component.translatable("gui.movinglightblock.tooltip.next"));
 
-        this.addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, button -> onClose())
+        Button done = Button.builder(CommonComponents.GUI_DONE, button -> onClose())
                 .pos((this.width - 100) / 2, footerY + BUTTON_HEIGHT + 6)
-                .size(100, BUTTON_HEIGHT).build());
+                .size(100, BUTTON_HEIGHT).build();
+        this.addRenderableWidget(done);
+        tip(done, Component.translatable("gui.movinglightblock.tooltip.done"));
+    }
+
+    private void tip(AbstractWidget widget, Component... lines) {
+        this.tooltips.put(widget, List.of(lines));
     }
 
     @Override
@@ -89,6 +111,14 @@ public class ModelSelectScreen extends Screen {
                 Component.translatable("gui.movinglightblock.model_hint"),
                 this.width / 2, 30, 0xA0A0A8);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
+        for (GuiEventListener listener : this.children()) {
+            if (listener instanceof AbstractWidget widget && widget.active && widget.isHovered()) {
+                List<Component> lines = this.tooltips.get(widget);
+                if (lines != null) {
+                    guiGraphics.renderComponentTooltip(this.font, lines, mouseX, mouseY);
+                }
+            }
+        }
     }
 
     @Override

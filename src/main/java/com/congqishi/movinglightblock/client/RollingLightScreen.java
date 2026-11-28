@@ -16,6 +16,8 @@ import net.minecraft.world.entity.player.Inventory;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import org.joml.Quaternionf;
+import java.util.ArrayList;
+import java.util.List;
 
 /** GUI backed by the three mode-specific 176x166 textures supplied for this mod. */
 public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu> {
@@ -174,9 +176,51 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
 
     @Override
     protected void renderTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        int localX = mouseX - this.leftPos;
+        int localY = mouseY - this.topPos;
+        int mode = menu.getMode();
+        if (mode < 0 || mode >= BUTTON_POS.length) {
+            mode = RollingLightMenu.MODE_NONE;
+        }
+        int[] pos = BUTTON_POS[mode];
+
+        // The three small icons are painted into the artwork, so they are not widgets.
+        String[] icons = {"settings", "model", "sound"};
+        for (int i = 0; i < icons.length; i++) {
+            if (hit(localX, localY, pos[i * 2], pos[i * 2 + 1])) {
+                guiGraphics.renderComponentTooltip(this.font, List.of(
+                        Component.translatable("gui.movinglightblock.tooltip." + icons[i]),
+                        Component.translatable("gui.movinglightblock.tooltip." + icons[i] + ".desc")),
+                        mouseX, mouseY);
+                return;
+            }
+        }
+
         if (menu.isTorchSlot(this.hoveredSlot)) {
             guiGraphics.renderTooltip(this.font, Component.translatable(
                     "gui.movinglightblock.torch", menu.getLightLevel(), 15), mouseX, mouseY);
+            return;
+        }
+        if (menu.isModuleSlot(this.hoveredSlot)) {
+            List<Component> lines = new ArrayList<>();
+            lines.add(Component.translatable("gui.movinglightblock.tooltip.module"));
+            lines.add(Component.translatable("gui.movinglightblock.tooltip.module.desc"));
+            if (menu.hasStoredItems()) {
+                lines.add(Component.translatable("gui.movinglightblock.tooltip.module.lock"));
+            }
+            guiGraphics.renderComponentTooltip(this.font, lines, mouseX, mouseY);
+            return;
+        }
+
+        boolean crafting = mode == RollingLightMenu.MODE_CRAFTING;
+        int previewX = crafting ? 16 : 18;
+        int previewY = crafting ? 16 : 17;
+        if (localX >= previewX && localX < previewX + 32
+                && localY >= previewY && localY < previewY + 32) {
+            guiGraphics.renderComponentTooltip(this.font, List.of(
+                    Component.translatable("gui.movinglightblock.tooltip.preview"),
+                    Component.translatable("gui.movinglightblock.tooltip.preview.desc")),
+                    mouseX, mouseY);
             return;
         }
         super.renderTooltip(guiGraphics, mouseX, mouseY);
