@@ -46,6 +46,8 @@ import java.util.UUID;
 public class RollingLightEntity extends Entity implements MenuProvider {
     private static final double GRAVITY = 0.08D;
     private static final double TERMINAL_VELOCITY = 3.9D;
+    /** A cube must be buried this many ticks before it counts as genuinely stuck. */
+    private static final int STUCK_RESCUE_TICKS = 20;
 
     /** Small hitbox: collides with blocks in world, but fits through one-block gaps. */
     private static final EntityDimensions DIMENSIONS = EntityDimensions.fixed(0.6F, 0.6F);
@@ -63,6 +65,7 @@ public class RollingLightEntity extends Entity implements MenuProvider {
     private boolean hasStarted;
     private Vec3 lastPlayerTarget;
     private double travelSinceIdle;
+    private int stuckTicks;
 
     public RollingLightEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -145,6 +148,7 @@ public class RollingLightEntity extends Entity implements MenuProvider {
         this.following = false;
         this.hasStarted = false;
         this.travelSinceIdle = 0.0D;
+        this.stuckTicks = 0;
         this.lastPlayerTarget = null;
         this.setDeltaMovement(Vec3.ZERO);
     }
@@ -156,6 +160,7 @@ public class RollingLightEntity extends Entity implements MenuProvider {
         this.following = false;
         this.hasStarted = false;
         this.travelSinceIdle = 0.0D;
+        this.stuckTicks = 0;
         this.lastPlayerTarget = null;
     }
 
@@ -169,6 +174,20 @@ public class RollingLightEntity extends Entity implements MenuProvider {
         BlockState state = this.level().getBlockState(pos);
         return state.isSuffocating(this.level(), pos)
                 && !state.is(com.congqishi.movinglightblock.MovingLightBlockMod.MOVING_LIGHT.get());
+    }
+
+    /**
+     * Only rescue after the cube has stayed buried for a while and is no longer chasing.
+     * While flying it deliberately passes through blocks, so a one-tick check used to
+     * teleport it every time the player stepped up onto any block.
+     */
+    public boolean shouldRescueFromSolid() {
+        if (!this.following && this.isInsideSolid()) {
+            this.stuckTicks++;
+            return this.stuckTicks >= STUCK_RESCUE_TICKS;
+        }
+        this.stuckTicks = 0;
+        return false;
     }
 
     // The cube must never be hurt, pushed, ignited or triggered by any block/entity path.

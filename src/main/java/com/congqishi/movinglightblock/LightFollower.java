@@ -115,8 +115,11 @@ public final class LightFollower {
                 continue;
             }
 
-            // Hard leash: never leave the cube far away, and rescue it if it spawns in a wall.
-            if (entity.distanceTo(target) > Config.TELEPORT_DISTANCE.get() || entity.isInsideSolid()) {
+            // Hard leash: never leave the cube far away. Only rescue from a solid block
+            // after it has actually stayed buried while idle - flying through blocks is
+            // normal, so an instant check here teleported it on every step up.
+            if (entity.distanceTo(target) > Config.TELEPORT_DISTANCE.get()
+                    || entity.shouldRescueFromSolid()) {
                 entity.teleportTo(findTeleportPos(level, target));
             }
 
