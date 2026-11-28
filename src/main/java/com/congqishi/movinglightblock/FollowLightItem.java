@@ -1,6 +1,8 @@
 package com.congqishi.movinglightblock;
 
 import com.congqishi.movinglightblock.entity.RollingLightEntity;
+import com.congqishi.movinglightblock.menu.RollingLightMenu;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -52,7 +54,17 @@ public final class FollowLightItem extends Item {
     }
 
     private InteractionResult spawn(ServerLevel level, Player player, ItemStack stack) {
-        // One summoned light per player: replace the old one instead of stacking entities.
+        // One summoned light per player: move the old cube's GUI contents into the item
+        // that is about to place the replacement, then discard the old entity.
+        RollingLightEntity old = LightFollower.getOwned(player.getUUID());
+        if (old != null) {
+            if (player.containerMenu instanceof RollingLightMenu menu && menu.getEntity() == old) {
+                menu.saveToEntity();
+            }
+            CompoundTag oldContents = old.getStoredMenu().copy();
+            oldContents.putInt("LightLevel", old.getLightLevel());
+            stack.set(ModDataComponents.STORED_ITEMS.get(), oldContents);
+        }
         LightFollower.discardOwned(player.getUUID());
 
         RollingLightEntity entity = ModEntities.ROLLING_LIGHT.get().create(level);
@@ -60,7 +72,16 @@ public final class FollowLightItem extends Item {
             return InteractionResult.FAIL;
         }
 
-        entity.setPos(LightFollower.findTeleportPos(level, (ServerPlayer) player));
+        CompoundTag stored = stack.get(ModDataComponents.STORED_ITEMS.get());
+        if (stored != null) {
+            entity.setStoredMenu(stored);
+            if (stored.contains("LightLevel")) {
+                entity.setLightLevel(stored.getInt("LightLevel"));
+            }
+        }
+        // The contents now belong to the entity, not to the remaining stack in hand.
+        stack.remove(ModDataComponents.STORED_ITEMS.get());
+        entity.setPos(LightFollower.findSpawnPos(level, (ServerPlayer) player));
         entity.setOwner(player.getUUID());
         level.addFreshEntity(entity);
         LightFollower.register(entity);

@@ -80,6 +80,16 @@ public final class LightFollower {
         ENTITIES.put(entity.getUUID(), entity);
     }
 
+    /** The cube currently owned by this player, if any. */
+    public static RollingLightEntity getOwned(UUID playerId) {
+        for (RollingLightEntity entity : ENTITIES.values()) {
+            if (playerId.equals(entity.getOwner())) {
+                return entity;
+            }
+        }
+        return null;
+    }
+
     public static void onServerTick(ServerTickEvent.Post event) {
         Iterator<Map.Entry<UUID, RollingLightEntity>> iterator = ENTITIES.entrySet().iterator();
         while (iterator.hasNext()) {
@@ -148,8 +158,12 @@ public final class LightFollower {
 
                 BlockState oldState = level.getBlockState(targetPos);
                 if (oldState.is(MovingLightBlockMod.MOVING_LIGHT.get())) {
-                    // Adopt an orphaned light block instead of leaking it forever.
+                    // Adopt an orphaned light block instead of leaking it forever, and make
+                    // sure it immediately matches this cube's torch count.
                     PLACEMENTS.put(id, new Placement(level, targetPos, Blocks.AIR.defaultBlockState()));
+                    if (!oldState.equals(desiredState)) {
+                        level.setBlock(targetPos, desiredState, Block.UPDATE_ALL);
+                    }
                 } else {
                     level.setBlock(targetPos, desiredState, Block.UPDATE_ALL);
                     PLACEMENTS.put(id, new Placement(level, targetPos, oldState));
@@ -200,19 +214,38 @@ public final class LightFollower {
         return null;
     }
 
+    /** Safe spot behind the player, used while the cube is following or being rescued. */
+    public static Vec3 findTeleportPos(ServerLevel level, ServerPlayer player) {
+        return findPos(level, player, false);
+    }
+
+    /** Safe spot in front of the player, used when the summon item is placed. */
+    public static Vec3 findSpawnPos(ServerLevel level, ServerPlayer player) {
+        return findPos(level, player, true);
+    }
+
     /**
-     * Finds a safe spot beside the player, kept away from the player's feet so the hidden
+     * Finds a safe spot near the player, kept away from the player's feet so the hidden
      * light block cannot get in the way. Never returns a solid block position.
      */
-    public static Vec3 findTeleportPos(ServerLevel level, ServerPlayer player) {
+    private static Vec3 findPos(ServerLevel level, ServerPlayer player, boolean inFront) {
         double distance = Config.FOLLOW_DISTANCE.get();
         Vec3 look = player.getLookAngle();
-        double[][] directions = {
-                {-look.x, -look.z},
-                {look.z, -look.x},
-                {-look.z, look.x},
-                {look.x, look.z}
-        };
+        double fx = look.x;
+        double fz = look.z;
+        double[][] directions = inFront
+                ? new double[][] {
+                        {fx, fz},
+                        {fz, -fx},
+                        {-fz, fx},
+                        {-fx, -fz}
+                }
+                : new double[][] {
+                        {-fx, -fz},
+                        {fz, -fx},
+                        {-fz, fx},
+                        {fx, fz}
+                };
         int baseY = player.blockPosition().getY() + Config.Y_OFFSET.get();
 
         for (double[] direction : directions) {

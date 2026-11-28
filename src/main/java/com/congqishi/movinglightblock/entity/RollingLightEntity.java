@@ -68,6 +68,8 @@ public class RollingLightEntity extends Entity implements MenuProvider {
     private int stuckTicks;
     /** Real block light level, 0..15. Set by the torches in the cube's GUI and saved in NBT. */
     private int lightLevel = Config.LIGHT_LEVEL.get();
+    /** GUI contents (module, crafting, smelting and storage), kept across saves and retracts. */
+    private CompoundTag storedMenu = new CompoundTag();
 
     public RollingLightEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -153,6 +155,15 @@ public class RollingLightEntity extends Entity implements MenuProvider {
 
     public void setLightLevel(int level) {
         this.lightLevel = Mth.clamp(level, 0, 15);
+    }
+
+    /** NBT snapshot of everything the player put into the cube's management GUI. */
+    public CompoundTag getStoredMenu() {
+        return this.storedMenu;
+    }
+
+    public void setStoredMenu(CompoundTag tag) {
+        this.storedMenu = tag == null ? new CompoundTag() : tag.copy();
     }
 
     public void stopFollowing() {
@@ -352,6 +363,9 @@ public class RollingLightEntity extends Entity implements MenuProvider {
         if (compound.contains("LightLevel")) {
             this.lightLevel = Mth.clamp(compound.getInt("LightLevel"), 0, 15);
         }
+        if (compound.contains("StoredMenu", net.minecraft.nbt.Tag.TAG_COMPOUND)) {
+            this.storedMenu = compound.getCompound("StoredMenu").copy();
+        }
         // Entities loaded from the world save are not created by FollowLightItem, so they
         // must be re-registered or the follower would never place their hidden light again.
         if (!this.level().isClientSide) {
@@ -365,5 +379,6 @@ public class RollingLightEntity extends Entity implements MenuProvider {
             compound.putUUID("Owner", this.owner);
         }
         compound.putInt("LightLevel", this.lightLevel);
+        compound.put("StoredMenu", this.storedMenu.copy());
     }
 }

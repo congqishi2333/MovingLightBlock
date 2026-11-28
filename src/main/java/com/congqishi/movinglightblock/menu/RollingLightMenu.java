@@ -3,6 +3,10 @@ package com.congqishi.movinglightblock.menu;
 import com.congqishi.movinglightblock.ModMenus;
 import com.congqishi.movinglightblock.MovingLightBlockMod;
 import com.congqishi.movinglightblock.entity.RollingLightEntity;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
@@ -112,11 +116,14 @@ public class RollingLightMenu extends AbstractContainerMenu {
         addDataSlot(progressData);
         addDataSlot(burnData);
 
-        // On the server the cube owns the persistent light level; the client receives it
-        // through lightData when the menu is opened.
+        // On the server the cube owns the persistent contents; the client receives the
+        // light level through lightData when the menu is opened.
         if (entity != null && !level.isClientSide) {
-            this.lightData.set(Mth.clamp(entity.getLightLevel(), 0, 15));
-            this.torches.setItem(0, new ItemStack(Items.TORCH, this.lightData.get()));
+            applyStoredMenu(entity.getStoredMenu());
+            int savedLight = Mth.clamp(entity.getLightLevel(), 0, 15);
+            this.lightData.set(savedLight);
+            this.torches.setItem(0, savedLight == 0
+                    ? ItemStack.EMPTY : new ItemStack(Items.TORCH, savedLight));
         }
 
         this.moduleSlot = new ModuleSlot(module, 0, MODULE_X[MODE_NONE], MODULE_Y[MODE_NONE]);
@@ -201,6 +208,83 @@ public class RollingLightMenu extends AbstractContainerMenu {
         this.lightData.set(clamped);
         if (this.entity != null && !this.level.isClientSide) {
             this.entity.setLightLevel(clamped);
+        }
+    }
+
+    /** Restores the cube's stored GUI contents when its menu is opened. */
+    private void applyStoredMenu(CompoundTag tag) {
+        HolderLookup.Provider registries = level.registryAccess();
+        module.setItem(0, loadStack(tag, "Module", registries));
+        craftResult.setItem(0, loadStack(tag, "CraftResult", registries));
+        smeltInput.setItem(0, loadStack(tag, "SmeltInput", registries));
+        smeltFuel.setItem(0, loadStack(tag, "SmeltFuel", registries));
+        smeltOutput.setItem(0, loadStack(tag, "SmeltOutput", registries));
+        loadStacks(tag.getList("Crafting", Tag.TAG_COMPOUND), registries, crafting);
+        loadStacks(tag.getList("Storage", Tag.TAG_COMPOUND), registries, storage);
+    }
+
+    /** Writes the current GUI contents back to the cube so they survive close/retract. */
+    public void saveToEntity() {
+        if (entity == null || level.isClientSide) {
+            return;
+        }
+        CompoundTag tag = new CompoundTag();
+        HolderLookup.Provider registries = level.registryAccess();
+        saveStack(tag, "Module", module.getItem(0), registries);
+        saveStack(tag, "CraftResult", craftResult.getItem(0), registries);
+        saveStack(tag, "SmeltInput", smeltInput.getItem(0), registries);
+        saveStack(tag, "SmeltFuel", smeltFuel.getItem(0), registries);
+        saveStack(tag, "SmeltOutput", smeltOutput.getItem(0), registries);
+        tag.put("Crafting", saveStacks(registries, crafting.getContainerSize(), crafting::getItem));
+        tag.put("Storage", saveStacks(registries, storage.getContainerSize(), storage::getItem));
+        entity.setStoredMenu(tag);
+    }
+
+    /** Empties the GUI after its contents have been copied into the retract item. */
+    public void clearContents() {
+        module.clearContent();
+        torches.clearContent();
+        crafting.clearContent();
+        craftResult.clearContent();
+        smeltInput.clearContent();
+        smeltFuel.clearContent();
+        smeltOutput.clearContent();
+        storage.clearContent();
+    }
+
+    private static void saveStack(CompoundTag tag, String key, ItemStack stack,
+                                  HolderLookup.Provider registries) {
+        if (!stack.isEmpty()) {
+            tag.put(key, stack.save(registries, new CompoundTag()));
+        }
+    }
+
+    private static ItemStack loadStack(CompoundTag tag, String key,
+                                       HolderLookup.Provider registries) {
+        return tag.contains(key, Tag.TAG_COMPOUND)
+                ? ItemStack.parseOptional(registries, tag.getCompound(key))
+                : ItemStack.EMPTY;
+    }
+
+    private interface StackSource {
+        ItemStack get(int index);
+    }
+
+    private static ListTag saveStacks(HolderLookup.Provider registries, int size,
+                                      StackSource source) {
+        ListTag list = new ListTag();
+        for (int i = 0; i < size; i++) {
+            list.add(source.get(i).save(registries, new CompoundTag()));
+        }
+        return list;
+    }
+
+    private static void loadStacks(ListTag list, HolderLookup.Provider registries,
+                                   net.minecraft.world.Container container) {
+        for (int i = 0; i < container.getContainerSize(); i++) {
+            Tag tag = i < list.size() ? list.get(i) : null;
+            container.setItem(i, tag instanceof CompoundTag compound
+                    ? ItemStack.parseOptional(registries, compound) : ItemStack.EMPTY);
         }
     }
 
@@ -410,13 +494,19 @@ public class RollingLightMenu extends AbstractContainerMenu {
     @Override
     public void removed(Player player) {
         if (!level.isClientSide) {
-            returnItems(player, module);
-            returnItems(player, crafting);
-            returnItems(player, craftResult);
-            returnItems(player, smeltInput);
-            returnItems(player, smeltFuel);
-            returnItems(player, smeltOutput);
-            returnItems(player, storage);
+            if (entity != null && !entity.isRemoved()) {
+                // The cube keeps its contents while it exists, just like a chest or furnace.
+                saveToEntity();
+            } else {
+                // No cube to save into (for example after a forced removal): never lose items.
+                returnItems(player, module);
+                returnItems(player, crafting);
+                returnItems(player, craftResult);
+                returnItems(player, smeltInput);
+                returnItems(player, smeltFuel);
+                returnItems(player, smeltOutput);
+                returnItems(player, storage);
+            }
         }
         super.removed(player);
     }
@@ -469,10 +559,10 @@ public class RollingLightMenu extends AbstractContainerMenu {
 
         @Override
         public void setItem(int index, ItemStack incoming) {
-            int level = incoming.isEmpty() || incoming.getItem() != Items.TORCH
-                    ? 0 : Mth.clamp(incoming.getCount(), 0, 15);
-            stack = level == 0 ? ItemStack.EMPTY : new ItemStack(Items.TORCH, level);
-            setTorchLevel(level);
+            // Keep the whole stack: silently truncating 64 torches to 15 lost the remainder.
+            stack = incoming.isEmpty() || incoming.getItem() != Items.TORCH
+                    ? ItemStack.EMPTY : incoming.copy();
+            setTorchLevel(stack.getCount());
         }
 
         @Override
@@ -482,9 +572,7 @@ public class RollingLightMenu extends AbstractContainerMenu {
 
         @Override
         public void setChanged() {
-            int level = stack.isEmpty() || stack.getItem() != Items.TORCH
-                    ? 0 : Mth.clamp(stack.getCount(), 0, 15);
-            setTorchLevel(level);
+            setTorchLevel(stack.getCount());
         }
 
         @Override

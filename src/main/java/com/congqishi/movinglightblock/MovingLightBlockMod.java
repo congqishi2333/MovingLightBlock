@@ -3,6 +3,7 @@ package com.congqishi.movinglightblock;
 import com.congqishi.movinglightblock.entity.RollingLightEntity;
 import com.congqishi.movinglightblock.menu.RollingLightMenu;
 import com.congqishi.movinglightblock.network.RetractPayload;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -63,6 +64,7 @@ public class MovingLightBlockMod {
         ITEMS.register(modEventBus);
         ModEntities.ENTITIES.register(modEventBus);
         ModMenus.MENUS.register(modEventBus);
+        ModDataComponents.register(modEventBus);
 
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
 
@@ -117,8 +119,23 @@ public class MovingLightBlockMod {
             return;
         }
 
-        LightFollower.discardOwned(player.getUUID());
+        // Save the GUI contents into the returned item before the entity disappears.
+        RollingLightMenu openMenu = player.containerMenu instanceof RollingLightMenu menu
+                && menu.getEntity() == light ? menu : null;
+        if (openMenu != null) {
+            openMenu.saveToEntity();
+        }
+        CompoundTag contents = light.getStoredMenu().copy();
+        contents.putInt("LightLevel", light.getLightLevel());
         ItemStack item = new ItemStack(MOVING_LIGHT_ITEM.get());
+        if (!contents.isEmpty()) {
+            item.set(ModDataComponents.STORED_ITEMS.get(), contents);
+        }
+        if (openMenu != null) {
+            // The contents now live in the item; avoid returning them again when the GUI closes.
+            openMenu.clearContents();
+        }
+        LightFollower.discardOwned(player.getUUID());
         if (!player.getInventory().add(item)) {
             player.drop(item, false);
         }
