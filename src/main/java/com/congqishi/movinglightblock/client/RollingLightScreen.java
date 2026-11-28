@@ -171,10 +171,11 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
 
     @Override
     protected void renderTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        super.renderTooltip(guiGraphics, mouseX, mouseY);
         if (menu.isTorchSlot(this.hoveredSlot)) {
             guiGraphics.renderTooltip(this.font, Component.translatable(
                     "gui.movinglightblock.torch", menu.getLightLevel(), 15), mouseX, mouseY);
+            return;
         }
+        super.renderTooltip(guiGraphics, mouseX, mouseY);
     }
 }
