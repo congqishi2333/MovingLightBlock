@@ -37,8 +37,8 @@ import net.neoforged.neoforge.network.IContainerFactory;
  * Workbench-like menu attached to a rolling light.
  *
  * <p>The module slot accepts a crafting table, furnace or chest item. That choice enables the
- * matching panel: 3x3 crafting, smelting, or 54-slot double-chest storage. Player inventory is
- * always available at the bottom. Slot positions follow each mode's GUI artwork exactly.</p>
+ * matching panel: 3x3 crafting, smelting, or 18-slot storage. Player inventory is always
+ * available at the bottom. Storage mode scales the same artwork and 18 slots up to 256x242.</p>
  */
 public class RollingLightMenu extends AbstractContainerMenu {
     public static final int MODE_NONE = 0;
@@ -53,7 +53,11 @@ public class RollingLightMenu extends AbstractContainerMenu {
     private static final int SMELT_INPUT = 12;
     private static final int SMELT_FUEL = 13;
     private static final int SMELT_RESULT = 14;
-    private static final int STORAGE_COUNT = 54;
+    /** Storage artwork is 176x166; the enlarged GUI renders it at 256x242. */
+    public static final int STORAGE_GUI_WIDTH = 256;
+    public static final int STORAGE_GUI_HEIGHT = 242;
+
+    private static final int STORAGE_COUNT = 18;
     private static final int STORAGE_START = 15;
     private static final int STORAGE_END = STORAGE_START + STORAGE_COUNT;
     private static final int INV_START = STORAGE_END;
@@ -61,13 +65,22 @@ public class RollingLightMenu extends AbstractContainerMenu {
 
     private static final int COOK_TIME = 200;
 
+    /** Converts an artwork coordinate to the enlarged storage GUI coordinate. */
+    public static int scaleX(int value) {
+        return Math.round(value * (float) STORAGE_GUI_WIDTH / 176.0F);
+    }
+
+    public static int scaleY(int value) {
+        return Math.round(value * (float) STORAGE_GUI_HEIGHT / 166.0F);
+    }
+
     /** Module slot position for each mode, matching the corresponding GUI texture cell. */
-    private static final int[] MODULE_X = {132, 132, 132, 184};
-    private static final int[] MODULE_Y = {6, 6, 7, 18};
+    private static final int[] MODULE_X = {132, 132, 132, scaleX(136)};
+    private static final int[] MODULE_Y = {6, 6, 7, scaleY(63)};
 
     /** Torch slot position for each mode, matching the second top cell in every texture. */
-    private static final int[] TORCH_X = {152, 152, 152, 204};
-    private static final int[] TORCH_Y = {6, 6, 7, 18};
+    private static final int[] TORCH_X = {152, 152, 152, scaleX(154)};
+    private static final int[] TORCH_Y = {6, 6, 7, scaleY(63)};
 
     private final RollingLightEntity entity;
     private final int entityId;
@@ -151,9 +164,10 @@ public class RollingLightMenu extends AbstractContainerMenu {
         addSlot(new ModeSlot(smeltFuel, 0, 152, 7, MODE_SMELTING, false));
         addSlot(new ModeSlot(smeltOutput, 0, 130, 40, MODE_SMELTING, true));
 
-        // Storage mode uses the vanilla double-chest layout: 9 columns by 6 rows on the left.
+        // Storage keeps its original 6x3 cells, just scaled up with the artwork.
         for (int i = 0; i < STORAGE_COUNT; i++) {
-            addSlot(new ModeSlot(storage, i, 8 + (i % 9) * 18, 18 + (i / 9) * 18,
+            addSlot(new ModeSlot(storage, i,
+                    scaleX(64 + (i % 6) * 18), scaleY(7 + (i / 6) * 18),
                     MODE_STORAGE, false));
         }
 
@@ -201,20 +215,23 @@ public class RollingLightMenu extends AbstractContainerMenu {
         this.slots.add(0, this.torchSlot);
         this.slots.add(0, this.moduleSlot);
 
-        // Storage mode is taller, so the player inventory moves down to the vanilla
-        // double-chest positions. Replacing slots in place keeps their indices stable.
+        // Storage keeps the same inventory cells, scaled with the enlarged artwork.
+        // Replacing slots in place keeps their indices stable.
         boolean large = mode == MODE_STORAGE;
-        int mainY = large ? 140 : 84;
-        int hotbarY = large ? 198 : 142;
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
+                int x = 8 + col * 18;
+                int y = 84 + row * 18;
                 this.slots.set(INV_START + row * 9 + col,
-                        new Slot(this.inventory, 9 + row * 9 + col, 8 + col * 18, mainY + row * 18));
+                        new Slot(this.inventory, 9 + row * 9 + col,
+                                large ? scaleX(x) : x, large ? scaleY(y) : y));
             }
         }
         for (int col = 0; col < 9; col++) {
+            int x = 8 + col * 18;
             this.slots.set(INV_START + 27 + col,
-                    new Slot(this.inventory, col, 8 + col * 18, hotbarY));
+                    new Slot(this.inventory, col,
+                            large ? scaleX(x) : x, large ? scaleY(142) : 142));
         }
     }
 
