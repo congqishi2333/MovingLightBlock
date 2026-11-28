@@ -103,6 +103,10 @@ public class ModelSelectScreen extends Screen {
         this.tooltips.put(widget, List.of(lines));
     }
 
+    private void showTooltip(List<Component> lines) {
+        this.setTooltipForNextRenderPass(lines.stream().map(Component::getVisualOrderText).toList());
+    }
+
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
@@ -115,7 +119,7 @@ public class ModelSelectScreen extends Screen {
             if (listener instanceof AbstractWidget widget && widget.active && widget.isHovered()) {
                 List<Component> lines = this.tooltips.get(widget);
                 if (lines != null) {
-                    guiGraphics.renderComponentTooltip(this.font, lines, mouseX, mouseY);
+                    showTooltip(lines);
                 }
             }
         }

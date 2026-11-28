@@ -109,6 +109,10 @@ public class SoundSettingsScreen extends Screen {
         this.tooltips.put(widget, lines);
     }
 
+    private void showTooltip(List<Component> lines) {
+        this.setTooltipForNextRenderPass(lines.stream().map(Component::getVisualOrderText).toList());
+    }
+
     private void save() {
         for (SoundSettings.Phase phase : SoundSettings.Phase.values()) {
             SoundSettings.Entry entry = working.entry(phase);
@@ -181,7 +185,7 @@ public class SoundSettingsScreen extends Screen {
             if (listener instanceof AbstractWidget widget && widget.active && widget.isHovered()) {
                 List<Component> lines = this.tooltips.get(widget);
                 if (lines != null) {
-                    guiGraphics.renderComponentTooltip(this.font, lines, mouseX, mouseY);
+                    showTooltip(lines);
                 }
             }
         }

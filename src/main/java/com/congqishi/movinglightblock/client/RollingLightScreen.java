@@ -175,7 +175,17 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
     }
 
     @Override
-    protected void renderTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        drawCustomTooltip(mouseX, mouseY);
+    }
+
+    /** 1.21.1 renders tooltips after render(), so queue them for the current frame here. */
+    private void showTooltip(List<Component> lines) {
+        this.setTooltipForNextRenderPass(lines.stream().map(Component::getVisualOrderText).toList());
+    }
+
+    private void drawCustomTooltip(int mouseX, int mouseY) {
         int localX = mouseX - this.leftPos;
         int localY = mouseY - this.topPos;
         int mode = menu.getMode();
@@ -188,17 +198,16 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
         String[] icons = {"settings", "model", "sound"};
         for (int i = 0; i < icons.length; i++) {
             if (hit(localX, localY, pos[i * 2], pos[i * 2 + 1])) {
-                guiGraphics.renderComponentTooltip(this.font, List.of(
+                showTooltip(List.of(
                         Component.translatable("gui.movinglightblock.tooltip." + icons[i]),
-                        Component.translatable("gui.movinglightblock.tooltip." + icons[i] + ".desc")),
-                        mouseX, mouseY);
+                        Component.translatable("gui.movinglightblock.tooltip." + icons[i] + ".desc")));
                 return;
             }
         }
 
         if (menu.isTorchSlot(this.hoveredSlot)) {
-            guiGraphics.renderTooltip(this.font, Component.translatable(
-                    "gui.movinglightblock.torch", menu.getLightLevel(), 15), mouseX, mouseY);
+            showTooltip(List.of(Component.translatable(
+                    "gui.movinglightblock.torch", menu.getLightLevel(), 15)));
             return;
         }
         if (menu.isModuleSlot(this.hoveredSlot)) {
@@ -208,7 +217,7 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
             if (menu.hasStoredItems()) {
                 lines.add(Component.translatable("gui.movinglightblock.tooltip.module.lock"));
             }
-            guiGraphics.renderComponentTooltip(this.font, lines, mouseX, mouseY);
+            showTooltip(lines);
             return;
         }
 
@@ -217,12 +226,9 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
         int previewY = crafting ? 16 : 17;
         if (localX >= previewX && localX < previewX + 32
                 && localY >= previewY && localY < previewY + 32) {
-            guiGraphics.renderComponentTooltip(this.font, List.of(
+            showTooltip(List.of(
                     Component.translatable("gui.movinglightblock.tooltip.preview"),
-                    Component.translatable("gui.movinglightblock.tooltip.preview.desc")),
-                    mouseX, mouseY);
-            return;
+                    Component.translatable("gui.movinglightblock.tooltip.preview.desc")));
         }
-        super.renderTooltip(guiGraphics, mouseX, mouseY);
     }
 }
