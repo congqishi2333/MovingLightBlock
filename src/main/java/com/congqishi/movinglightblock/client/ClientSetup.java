@@ -5,6 +5,7 @@ import com.congqishi.movinglightblock.ModEntities;
 import com.congqishi.movinglightblock.ModMenus;
 import com.congqishi.movinglightblock.MovingLightBlockMod;
 import com.congqishi.movinglightblock.entity.RollingLightEntity;
+import com.congqishi.movinglightblock.client.sound.SoundController;
 import com.congqishi.movinglightblock.network.RetractPayload;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
@@ -16,6 +17,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 
@@ -32,6 +34,11 @@ public final class ClientSetup {
     @SubscribeEvent
     public static void registerScreens(RegisterMenuScreensEvent event) {
         event.register(ModMenus.ROLLING_LIGHT.get(), RollingLightScreen::new);
+    }
+
+    @SubscribeEvent
+    public static void onClientTick(ClientTickEvent.Post event) {
+        SoundController.tick();
     }
 
     @SubscribeEvent

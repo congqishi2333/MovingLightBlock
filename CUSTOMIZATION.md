@@ -231,6 +231,28 @@ assets/<ns>/textures/block/my_cube.png.mcmeta
 
 如需透明材质或按模型自动选择渲染层，需要改 `RollingLightRenderer`（可改为 `ItemBlockRenderTypes.getRenderType(...)`）。
 
+## 自定义声音（独立文件夹 + JSON）
+
+声音按钮是唯一会创建 `config/movinglightblock/sounds/` 的操作；不打开声音设置界面就不会生成这个文件夹。把 `.ogg` 文件放进去，文件夹内的 `sounds.json` 是唯一的声音信息来源：
+
+```json
+{
+  "summon": { "file": "spawn.ogg", "volume": 1.0, "speed": 1.0 },
+  "land":   { "file": "thud.ogg",  "volume": 0.8, "speed": 1.0 },
+  "move":   { "file": "roll.ogg",  "volume": 0.5, "speed": 1.2 },
+  "idle":   { "file": "hum.ogg",   "volume": 0.3, "speed": 1.0 }
+}
+```
+
+| 阶段 | 触发方式 |
+|---|---|
+| `summon` | 自己的方块第一次出现在客户端，播放一次 |
+| `land` | 下落结束并停住，播放一次 |
+| `move` | 开始移动时循环播放，停下即停止 |
+| `idle` | 从移动变为静止时播放一次 |
+
+`file` 留空表示无声（默认值）；`volume` 范围 0–2，`speed` 范围 0.25–4。`speed` 同时改变音高，和原版音效的 pitch 行为一致。所有字段都可以在游戏内的声音设置界面里修改，保存后立即作用于正在播放的循环音效。声音只在本地播放，不占用原版 `sounds.json`，也不需要资源包。
+
 ## 使用内置模板
 
 1. 把仓库中的 `example-resourcepack/` 整个文件夹复制到：

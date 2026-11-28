@@ -1,0 +1,163 @@
+package com.congqishi.movinglightblock.client;
+
+import com.congqishi.movinglightblock.client.sound.SoundController;
+import com.congqishi.movinglightblock.client.sound.SoundSettings;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.CommonComponents;
+import net.minecraft.network.chat.Component;
+
+import java.util.EnumMap;
+import java.util.Map;
+
+/** Edits the four JSON-backed sound phases. Opening this screen creates the sound folder. */
+public class SoundSettingsScreen extends Screen {
+    private static final int ROW_HEIGHT = 28;
+    private static final int FIELD_WIDTH = 118;
+    private static final int NUMBER_WIDTH = 44;
+    private static final int BUTTON_HEIGHT = 20;
+
+    private final Screen parent;
+    private final SoundSettings working;
+    private final Map<SoundSettings.Phase, EditBox> files = new EnumMap<>(SoundSettings.Phase.class);
+    private final Map<SoundSettings.Phase, EditBox> volumes = new EnumMap<>(SoundSettings.Phase.class);
+    private final Map<SoundSettings.Phase, EditBox> speeds = new EnumMap<>(SoundSettings.Phase.class);
+
+    public SoundSettingsScreen(Screen parent) {
+        super(Component.translatable("gui.movinglightblock.sound_title"));
+        this.parent = parent;
+        SoundSettings.ensureCreated();
+        SoundSettings current = SoundSettings.get();
+        this.working = new SoundSettings();
+        this.working.summon = current.summon.copy();
+        this.working.land = current.land.copy();
+        this.working.move = current.move.copy();
+        this.working.idle = current.idle.copy();
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+        int center = this.width / 2;
+        int left = center - 125;
+        int startY = 44;
+
+        for (int i = 0; i < SoundSettings.Phase.values().length; i++) {
+            SoundSettings.Phase phase = SoundSettings.Phase.values()[i];
+            int y = startY + i * ROW_HEIGHT;
+            SoundSettings.Entry entry = working.entry(phase);
+
+            EditBox file = new EditBox(this.font, left + 62, y, FIELD_WIDTH, BUTTON_HEIGHT,
+                    Component.translatable("gui.movinglightblock.sound_file"));
+            file.setValue(entry.file);
+            file.setMaxLength(96);
+            addRenderableWidget(file);
+            files.put(phase, file);
+
+            EditBox volume = new EditBox(this.font, left + 186, y, NUMBER_WIDTH, BUTTON_HEIGHT,
+                    Component.translatable("gui.movinglightblock.sound_volume"));
+            volume.setValue(Float.toString(entry.volume));
+            volume.setMaxLength(8);
+            addRenderableWidget(volume);
+            volumes.put(phase, volume);
+
+            EditBox speed = new EditBox(this.font, left + 236, y, NUMBER_WIDTH, BUTTON_HEIGHT,
+                    Component.translatable("gui.movinglightblock.sound_speed"));
+            speed.setValue(Float.toString(entry.speed));
+            speed.setMaxLength(8);
+            addRenderableWidget(speed);
+            speeds.put(phase, speed);
+        }
+
+        int footerY = startY + SoundSettings.Phase.values().length * ROW_HEIGHT + 6;
+        int small = 76;
+        this.addRenderableWidget(Button.builder(
+                        Component.translatable("gui.movinglightblock.sound_save"), button -> save())
+                .pos(left, footerY).size(small, BUTTON_HEIGHT).build());
+
+        this.addRenderableWidget(Button.builder(
+                        Component.translatable("gui.movinglightblock.sound_list"), button -> listFiles())
+                .pos(left + small + 6, footerY).size(small, BUTTON_HEIGHT).build());
+
+        this.addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, button -> onClose())
+                .pos(left + 2 * (small + 6), footerY).size(small, BUTTON_HEIGHT).build());
+    }
+
+    private void save() {
+        for (SoundSettings.Phase phase : SoundSettings.Phase.values()) {
+            SoundSettings.Entry entry = working.entry(phase);
+            entry.file = files.get(phase).getValue().trim();
+            entry.volume = parseNumber(volumes.get(phase).getValue(), entry.volume,
+                    SoundSettings.MIN_VOLUME, SoundSettings.MAX_VOLUME);
+            entry.speed = parseNumber(speeds.get(phase).getValue(), entry.speed,
+                    SoundSettings.MIN_SPEED, SoundSettings.MAX_SPEED);
+        }
+        SoundSettings.save(working);
+        SoundController.onSettingsChanged();
+        message("message.movinglightblock.sound_saved");
+    }
+
+    private void listFiles() {
+        var names = SoundSettings.listFiles();
+        if (names.isEmpty()) {
+            message("message.movinglightblock.sound_no_files");
+            return;
+        }
+        for (String name : names) {
+            if (Minecraft.getInstance().player != null) {
+                Minecraft.getInstance().player.sendSystemMessage(Component.literal(name));
+            }
+        }
+    }
+
+    private static float parseNumber(String text, float fallback, float min, float max) {
+        try {
+            float value = Float.parseFloat(text.trim());
+            return Math.max(min, Math.min(max, value));
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
+    }
+
+    private static void message(String key) {
+        if (Minecraft.getInstance().player != null) {
+            Minecraft.getInstance().player.displayClientMessage(Component.translatable(key), true);
+        }
+    }
+
+    @Override
+    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
+        guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 14, 0xFFFFFF);
+
+        int center = this.width / 2;
+        int left = center - 125;
+        int startY = 44;
+
+        guiGraphics.drawString(this.font,
+                Component.translatable("gui.movinglightblock.sound_file"), left + 62, 29, 0xA0A0A8, false);
+        guiGraphics.drawString(this.font,
+                Component.translatable("gui.movinglightblock.sound_volume"), left + 186, 29, 0xA0A0A8, false);
+        guiGraphics.drawString(this.font,
+                Component.translatable("gui.movinglightblock.sound_speed"), left + 236, 29, 0xA0A0A8, false);
+        guiGraphics.drawString(this.font,
+                Component.translatable("gui.movinglightblock.sound_hint"), left, 188, 0xA0A0A8, false);
+
+        for (int i = 0; i < SoundSettings.Phase.values().length; i++) {
+            SoundSettings.Phase phase = SoundSettings.Phase.values()[i];
+            guiGraphics.drawString(this.font,
+                    Component.translatable("gui.movinglightblock.sound_phase." + phase.key()),
+                    left, startY + i * ROW_HEIGHT + 5, 0xFFFFFF, false);
+        }
+
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
+    }
+
+    @Override
+    public void onClose() {
+        Minecraft.getInstance().setScreen(parent);
+    }
+}

@@ -29,6 +29,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -53,6 +54,10 @@ public class RollingLightEntity extends Entity implements MenuProvider {
     public static final EntityDataAccessor<Boolean> ANIMATION =
             SynchedEntityData.defineId(RollingLightEntity.class, EntityDataSerializers.BOOLEAN);
 
+    /** Synced so the client only plays sounds for the player's own cube. */
+    public static final EntityDataAccessor<Optional<UUID>> OWNER =
+            SynchedEntityData.defineId(RollingLightEntity.class, EntityDataSerializers.OPTIONAL_UUID);
+
     private UUID owner;
     private boolean following;
     private boolean hasStarted;
@@ -70,14 +75,16 @@ public class RollingLightEntity extends Entity implements MenuProvider {
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         builder.define(ANIMATION, true);
+        builder.define(OWNER, Optional.empty());
     }
 
     public void setOwner(UUID owner) {
         this.owner = owner;
+        this.entityData.set(OWNER, Optional.ofNullable(owner));
     }
 
     public UUID getOwner() {
-        return this.owner;
+        return this.entityData.get(OWNER).orElse(this.owner);
     }
 
     /**

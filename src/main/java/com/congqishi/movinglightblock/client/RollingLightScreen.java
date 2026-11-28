@@ -77,10 +77,7 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
                 return true;
             }
             if (hit(localX, localY, pos[4], pos[5])) {
-                if (Minecraft.getInstance().player != null) {
-                    Minecraft.getInstance().player.sendSystemMessage(
-                            Component.translatable("message.movinglightblock.sound_soon"));
-                }
+                Minecraft.getInstance().setScreen(new SoundSettingsScreen(this));
                 return true;
             }
         }
