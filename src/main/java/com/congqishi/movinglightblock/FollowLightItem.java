@@ -57,13 +57,20 @@ public final class FollowLightItem extends Item {
         // One summoned light per player: move the old cube's GUI contents into the item
         // that is about to place the replacement, then discard the old entity.
         RollingLightEntity old = LightFollower.getOwned(player.getUUID());
+        RollingLightMenu openMenu = player.containerMenu instanceof RollingLightMenu menu
+                && menu.getEntity() == old ? menu : null;
         if (old != null) {
-            if (player.containerMenu instanceof RollingLightMenu menu && menu.getEntity() == old) {
-                menu.saveToEntity();
+            if (openMenu != null) {
+                openMenu.saveToEntity();
             }
             CompoundTag oldContents = old.getStoredMenu().copy();
             oldContents.putInt("LightLevel", old.getLightLevel());
             stack.set(ModDataComponents.STORED_ITEMS.get(), oldContents);
+            if (openMenu != null) {
+                // The contents now live in the placement item; do not return them again
+                // when the replacement cube's GUI is closed.
+                openMenu.clearContents();
+            }
         }
         LightFollower.discardOwned(player.getUUID());
 
