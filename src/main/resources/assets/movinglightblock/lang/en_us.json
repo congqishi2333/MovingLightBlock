@@ -74,5 +74,22 @@
   "movinglightblock.configuration.chaseSpeed": "Follow speed",
   "movinglightblock.configuration.chaseSpeed.tooltip": "Speed in blocks per second; 5.6 is about sprint speed. Flies and follows vertically too.",
   "movinglightblock.configuration.teleportDistance": "Rescue distance",
-  "movinglightblock.configuration.teleportDistance.tooltip": "If the cube ends up farther than this, it is moved back next to you."
+  "movinglightblock.configuration.teleportDistance.tooltip": "If the cube ends up farther than this, it is moved back next to you.",
+  "gui.movinglightblock.settings_title": "Mod settings",
+  "gui.movinglightblock.settings.section.basic": "Basic features",
+  "gui.movinglightblock.settings.section.control": "Controls and light",
+  "gui.movinglightblock.settings.section.follow": "Following",
+  "gui.movinglightblock.settings_save": "Save settings",
+  "gui.movinglightblock.settings_on": "On",
+  "gui.movinglightblock.settings_off": "Off",
+  "gui.movinglightblock.tooltip.settings_save.desc": "Save every switch and number and apply them now.",
+  "message.movinglightblock.settings_saved": "Settings saved",
+  "message.movinglightblock.settings_invalid": "Some values were invalid; old values kept",
+  "gui.movinglightblock.model_group.default": "Default model (resource pack rolling.json)",
+  "gui.movinglightblock.model_group.presets": "Presets (config/movinglightblock/models/)",
+  "gui.movinglightblock.sound_group.phases": "Sound phases (file / volume / speed)",
+  "gui.movinglightblock.sound_phase.summon.desc": "Played once when the cube is summoned",
+  "gui.movinglightblock.sound_phase.land.desc": "Played once when the cube lands",
+  "gui.movinglightblock.sound_phase.move.desc": "Looped while chasing the player",
+  "gui.movinglightblock.sound_phase.idle.desc": "Played once when it stops moving"
 }

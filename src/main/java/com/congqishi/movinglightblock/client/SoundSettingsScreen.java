@@ -19,10 +19,11 @@ import java.util.Map;
 
 /** Edits the four JSON-backed sound phases. Opening this screen creates the sound folder. */
 public class SoundSettingsScreen extends Screen {
-    private static final int ROW_HEIGHT = 28;
+    private static final int ROW_HEIGHT = 34;
     private static final int FIELD_WIDTH = 118;
     private static final int NUMBER_WIDTH = 44;
     private static final int BUTTON_HEIGHT = 20;
+    private static final int START_Y = 64;
 
     private final Screen parent;
     private final SoundSettings working;
@@ -49,11 +50,10 @@ public class SoundSettingsScreen extends Screen {
         this.tooltips.clear();
         int center = this.width / 2;
         int left = center - 125;
-        int startY = 44;
 
         for (int i = 0; i < SoundSettings.Phase.values().length; i++) {
             SoundSettings.Phase phase = SoundSettings.Phase.values()[i];
-            int y = startY + i * ROW_HEIGHT;
+            int y = START_Y + i * ROW_HEIGHT;
             SoundSettings.Entry entry = working.entry(phase);
 
             EditBox file = new EditBox(this.font, left + 62, y, FIELD_WIDTH, BUTTON_HEIGHT,
@@ -81,7 +81,8 @@ public class SoundSettingsScreen extends Screen {
             tip(speed, "gui.movinglightblock.tooltip.sound_speed.desc");
         }
 
-        int footerY = startY + SoundSettings.Phase.values().length * ROW_HEIGHT + 6;
+        int footerY = Math.min(this.height - 26,
+                START_Y + SoundSettings.Phase.values().length * ROW_HEIGHT + 20);
         int small = 76;
         Button save = Button.builder(
                         Component.translatable("gui.movinglightblock.sound_save"), button -> save())
@@ -158,27 +159,34 @@ public class SoundSettingsScreen extends Screen {
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
-        guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 14, 0xFFFFFF);
+        guiGraphics.drawCenteredString(this.font, this.title, this.width / 2, 12, 0xFFFFFF);
 
         int center = this.width / 2;
         int left = center - 125;
-        int startY = 44;
 
         guiGraphics.drawString(this.font,
-                Component.translatable("gui.movinglightblock.sound_file"), left + 62, 29, 0xA0A0A8, false);
+                Component.translatable("gui.movinglightblock.sound_group.phases"),
+                left, 34, 0xFFD8A24A, false);
         guiGraphics.drawString(this.font,
-                Component.translatable("gui.movinglightblock.sound_volume"), left + 186, 29, 0xA0A0A8, false);
+                Component.translatable("gui.movinglightblock.sound_file"), left + 62, 51, 0xA0A0A8, false);
         guiGraphics.drawString(this.font,
-                Component.translatable("gui.movinglightblock.sound_speed"), left + 236, 29, 0xA0A0A8, false);
+                Component.translatable("gui.movinglightblock.sound_volume"), left + 186, 51, 0xA0A0A8, false);
         guiGraphics.drawString(this.font,
-                Component.translatable("gui.movinglightblock.sound_hint"), left, 188, 0xA0A0A8, false);
+                Component.translatable("gui.movinglightblock.sound_speed"), left + 236, 51, 0xA0A0A8, false);
 
         for (int i = 0; i < SoundSettings.Phase.values().length; i++) {
             SoundSettings.Phase phase = SoundSettings.Phase.values()[i];
-            guiGraphics.drawString(this.font,
-                    Component.translatable("gui.movinglightblock.sound_phase." + phase.key()),
-                    left, startY + i * ROW_HEIGHT + 5, 0xFFFFFF, false);
+            int y = START_Y + i * ROW_HEIGHT;
+            String key = "gui.movinglightblock.sound_phase." + phase.key();
+            guiGraphics.drawString(this.font, Component.translatable(key),
+                    left, y + 2, 0xFFFFFF, false);
+            guiGraphics.drawString(this.font, Component.translatable(key + ".desc"),
+                    left, y + 15, 0xA0A0A8, false);
         }
+        guiGraphics.drawString(this.font,
+                Component.translatable("gui.movinglightblock.sound_hint"),
+                left, Math.min(this.height - 42, START_Y
+                        + SoundSettings.Phase.values().length * ROW_HEIGHT + 6), 0xA0A0A8, false);
 
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         for (GuiEventListener listener : this.children()) {

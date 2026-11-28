@@ -74,5 +74,22 @@
   "movinglightblock.configuration.chaseSpeed": "跟随速度",
   "movinglightblock.configuration.chaseSpeed.tooltip": "追赶速度（格/秒），默认 5.6 约等于疾跑；会飞行，也会跟着上下移动。",
   "movinglightblock.configuration.teleportDistance": "远距离重置",
-  "movinglightblock.configuration.teleportDistance.tooltip": "离玩家超过这个距离时直接传送回身边，避免被落下或飞走。"
+  "movinglightblock.configuration.teleportDistance.tooltip": "离玩家超过这个距离时直接传送回身边，避免被落下或飞走。",
+  "gui.movinglightblock.settings_title": "模组设置",
+  "gui.movinglightblock.settings.section.basic": "基础功能",
+  "gui.movinglightblock.settings.section.control": "操作与亮度",
+  "gui.movinglightblock.settings.section.follow": "跟随设置",
+  "gui.movinglightblock.settings_save": "保存设置",
+  "gui.movinglightblock.settings_on": "开启",
+  "gui.movinglightblock.settings_off": "关闭",
+  "gui.movinglightblock.tooltip.settings_save.desc": "保存全部开关和数值，并立即应用；改完记得点这里。",
+  "message.movinglightblock.settings_saved": "设置已保存",
+  "message.movinglightblock.settings_invalid": "部分输入无效，已保留原值",
+  "gui.movinglightblock.model_group.default": "默认模型（资源包 rolling.json）",
+  "gui.movinglightblock.model_group.presets": "预设模型（config/movinglightblock/models/）",
+  "gui.movinglightblock.sound_group.phases": "声音阶段（文件名 / 音量 / 速度）",
+  "gui.movinglightblock.sound_phase.summon.desc": "放置方块时播放一次",
+  "gui.movinglightblock.sound_phase.land.desc": "方块落地时播放一次",
+  "gui.movinglightblock.sound_phase.move.desc": "追赶玩家时循环播放",
+  "gui.movinglightblock.sound_phase.idle.desc": "停止移动时播放一次"
 }

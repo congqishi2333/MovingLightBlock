@@ -13,8 +13,6 @@ import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
-import net.neoforged.fml.ModList;
-import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import org.joml.Quaternionf;
 import java.util.ArrayList;
 import java.util.List;
@@ -69,9 +67,7 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
             }
             int[] pos = BUTTON_POS[mode];
             if (hit(localX, localY, pos[0], pos[1])) {
-                Minecraft.getInstance().setScreen(new ConfigurationScreen(
-                        ModList.get().getModContainerById(MovingLightBlockMod.MODID).orElseThrow(),
-                        this));
+                Minecraft.getInstance().setScreen(new SettingsScreen(this));
                 return true;
             }
             if (hit(localX, localY, pos[2], pos[3])) {

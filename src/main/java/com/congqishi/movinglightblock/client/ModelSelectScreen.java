@@ -9,6 +9,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.CommonComponents;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,8 @@ public class ModelSelectScreen extends Screen {
     private final Screen parent;
     private final List<String> models;
     private final Map<AbstractWidget, List<Component>> tooltips = new HashMap<>();
+    private final List<Integer> headingYs = new ArrayList<>();
+    private final List<Component> headingTexts = new ArrayList<>();
     private int page;
 
     public ModelSelectScreen(Screen parent) {
@@ -38,13 +41,24 @@ public class ModelSelectScreen extends Screen {
     protected void init() {
         super.init();
         this.tooltips.clear();
+        this.headingYs.clear();
+        this.headingTexts.clear();
         int from = page * PER_PAGE;
         int count = Math.min(PER_PAGE, models.size() - from);
         int x = (this.width - BUTTON_WIDTH) / 2;
-        int y = 42;
+        int y = 56;
+        boolean presetsHeading = false;
 
         for (int i = 0; i < count; i++) {
             String name = models.get(from + i);
+            if (ModelManager.DEFAULT.equals(name)) {
+                heading(x, y, "gui.movinglightblock.model_group.default");
+                y += 16;
+            } else if (!presetsHeading) {
+                heading(x, y, "gui.movinglightblock.model_group.presets");
+                y += 16;
+                presetsHeading = true;
+            }
             Component label = ModelManager.DEFAULT.equals(name)
                     ? Component.translatable("gui.movinglightblock.model_default")
                     : Component.literal(name);
@@ -55,14 +69,15 @@ public class ModelSelectScreen extends Screen {
             Button entry = Button.builder(label, button -> {
                 ModelManager.select(chosen);
                 Minecraft.getInstance().setScreen(parent);
-            }).pos(x, y + i * (BUTTON_HEIGHT + 4)).size(BUTTON_WIDTH, BUTTON_HEIGHT).build();
+            }).pos(x, y).size(BUTTON_WIDTH, BUTTON_HEIGHT).build();
             this.addRenderableWidget(entry);
             tip(entry,
                     Component.translatable("gui.movinglightblock.tooltip.model_entry", name),
                     Component.translatable("gui.movinglightblock.tooltip.model_entry.desc"));
+            y += BUTTON_HEIGHT + 4;
         }
 
-        int footerY = Math.min(this.height - 30, y + Math.max(count, 1) * (BUTTON_HEIGHT + 4) + 6);
+        int footerY = Math.min(this.height - 30, y + 6);
         int pages = Math.max(1, (models.size() + PER_PAGE - 1) / PER_PAGE);
         int smallWidth = 60;
         int gap = 8;
@@ -99,6 +114,11 @@ public class ModelSelectScreen extends Screen {
         tip(done, Component.translatable("gui.movinglightblock.tooltip.done"));
     }
 
+    private void heading(int x, int y, String key) {
+        this.headingYs.add(y);
+        this.headingTexts.add(Component.translatable(key));
+    }
+
     private void tip(AbstractWidget widget, Component... lines) {
         this.tooltips.put(widget, List.of(lines));
     }
@@ -114,6 +134,10 @@ public class ModelSelectScreen extends Screen {
         guiGraphics.drawCenteredString(this.font,
                 Component.translatable("gui.movinglightblock.model_hint"),
                 this.width / 2, 30, 0xA0A0A8);
+        for (int i = 0; i < headingYs.size(); i++) {
+            guiGraphics.drawString(this.font, headingTexts.get(i),
+                    (this.width - BUTTON_WIDTH) / 2, headingYs.get(i), 0xFFD8A24A, false);
+        }
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         for (GuiEventListener listener : this.children()) {
             if (listener instanceof AbstractWidget widget && widget.active && widget.isHovered()) {
