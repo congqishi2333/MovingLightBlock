@@ -116,8 +116,16 @@ public class RollingLightMenu extends AbstractContainerMenu {
         addDataSlot(progressData);
         addDataSlot(burnData);
 
+        this.moduleSlot = new ModuleSlot(module, 0, MODULE_X[MODE_NONE], MODULE_Y[MODE_NONE]);
+        this.torchSlot = new TorchSlot(torches, 0, TORCH_X[MODE_NONE], TORCH_Y[MODE_NONE]);
+        addSlot(this.moduleSlot);
+        addSlot(this.torchSlot);
+
+        this.crafting = new TransientCraftingContainer(this, 3, 3);
+
         // On the server the cube owns the persistent contents; the client receives the
-        // light level through lightData when the menu is opened.
+        // light level through lightData when the menu is opened. This must happen after all
+        // containers exist: applyStoredMenu() fills the crafting container too.
         if (entity != null && !level.isClientSide) {
             applyStoredMenu(entity.getStoredMenu());
             int savedLight = Mth.clamp(entity.getLightLevel(), 0, 15);
@@ -126,12 +134,6 @@ public class RollingLightMenu extends AbstractContainerMenu {
                     ? ItemStack.EMPTY : new ItemStack(Items.TORCH, savedLight));
         }
 
-        this.moduleSlot = new ModuleSlot(module, 0, MODULE_X[MODE_NONE], MODULE_Y[MODE_NONE]);
-        this.torchSlot = new TorchSlot(torches, 0, TORCH_X[MODE_NONE], TORCH_Y[MODE_NONE]);
-        addSlot(this.moduleSlot);
-        addSlot(this.torchSlot);
-
-        this.crafting = new TransientCraftingContainer(this, 3, 3);
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 3; col++) {
                 addSlot(new ModeSlot(crafting, col + row * 3, 70 + col * 18, 25 + row * 18,
@@ -281,6 +283,9 @@ public class RollingLightMenu extends AbstractContainerMenu {
 
     private static void loadStacks(ListTag list, HolderLookup.Provider registries,
                                    net.minecraft.world.Container container) {
+        if (container == null) {
+            return;
+        }
         for (int i = 0; i < container.getContainerSize(); i++) {
             Tag tag = i < list.size() ? list.get(i) : null;
             container.setItem(i, tag instanceof CompoundTag compound
