@@ -135,6 +135,8 @@ public final class LightFollower {
                 continue;
             }
 
+            BlockState desiredState = MovingLightBlock.stateForLevel(entity.getLightLevel());
+
             // Keep the block in place while the cube stays in the same cell. Re-creating it
             // every tick made the real light flicker and caused unnecessary lighting updates.
             if (placement == null
@@ -149,9 +151,16 @@ public final class LightFollower {
                     // Adopt an orphaned light block instead of leaking it forever.
                     PLACEMENTS.put(id, new Placement(level, targetPos, Blocks.AIR.defaultBlockState()));
                 } else {
-                    level.setBlock(targetPos, MovingLightBlock.stateForLevel(Config.LIGHT_LEVEL.get()),
-                            Block.UPDATE_ALL);
+                    level.setBlock(targetPos, desiredState, Block.UPDATE_ALL);
                     PLACEMENTS.put(id, new Placement(level, targetPos, oldState));
+                }
+            } else {
+                BlockState current = level.getBlockState(targetPos);
+                if (current.is(MovingLightBlockMod.MOVING_LIGHT.get())
+                        && current.getValue(MovingLightBlock.LEVEL)
+                        != desiredState.getValue(MovingLightBlock.LEVEL)) {
+                    // Torch count changed in the cube's GUI: refresh just the light property.
+                    level.setBlock(targetPos, desiredState, Block.UPDATE_ALL);
                 }
             }
         }

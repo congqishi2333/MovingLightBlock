@@ -5,6 +5,7 @@ import com.congqishi.movinglightblock.MovingLightBlockMod;
 import com.congqishi.movinglightblock.entity.RollingLightEntity;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
@@ -42,12 +43,13 @@ public class RollingLightMenu extends AbstractContainerMenu {
     public static final int MODE_STORAGE = 3;
 
     private static final int MODULE_SLOT = 0;
-    private static final int CRAFT_START = 1;
-    private static final int CRAFT_RESULT = 10;
-    private static final int SMELT_INPUT = 11;
-    private static final int SMELT_FUEL = 12;
-    private static final int SMELT_RESULT = 13;
-    private static final int STORAGE_START = 14;
+    private static final int TORCH_SLOT = 1;
+    private static final int CRAFT_START = 2;
+    private static final int CRAFT_RESULT = 11;
+    private static final int SMELT_INPUT = 12;
+    private static final int SMELT_FUEL = 13;
+    private static final int SMELT_RESULT = 14;
+    private static final int STORAGE_START = 15;
     private static final int STORAGE_END = STORAGE_START + 18;
     private static final int INV_START = STORAGE_END;
     private static final int INV_END = INV_START + 36;
@@ -58,12 +60,17 @@ public class RollingLightMenu extends AbstractContainerMenu {
     private static final int[] MODULE_X = {132, 132, 132, 136};
     private static final int[] MODULE_Y = {6, 6, 7, 63};
 
+    /** Torch slot position for each mode, matching the second top cell in every texture. */
+    private static final int[] TORCH_X = {152, 152, 152, 154};
+    private static final int[] TORCH_Y = {6, 6, 7, 63};
+
     private final RollingLightEntity entity;
     private final int entityId;
     private final Player player;
     private final Level level;
 
     private final SimpleContainer module = new SimpleContainer(1);
+    private final TorchContainer torches = new TorchContainer();
     private final TransientCraftingContainer crafting;
     private final ResultContainer craftResult = new ResultContainer();
     private final SimpleContainer smeltInput = new SimpleContainer(1);
@@ -71,8 +78,10 @@ public class RollingLightMenu extends AbstractContainerMenu {
     private final SimpleContainer smeltOutput = new SimpleContainer(1);
     private final SimpleContainer storage = new SimpleContainer(18);
     private ModuleSlot moduleSlot;
+    private TorchSlot torchSlot;
 
     private final DataSlot modeData;
+    private final DataSlot lightData;
     private final DataSlot progressData;
     private final DataSlot burnData;
 
@@ -95,14 +104,25 @@ public class RollingLightMenu extends AbstractContainerMenu {
         this.level = inventory.player.level();
 
         this.modeData = DataSlot.standalone();
+        this.lightData = DataSlot.standalone();
         this.progressData = DataSlot.standalone();
         this.burnData = DataSlot.standalone();
         addDataSlot(modeData);
+        addDataSlot(lightData);
         addDataSlot(progressData);
         addDataSlot(burnData);
 
+        // On the server the cube owns the persistent light level; the client receives it
+        // through lightData when the menu is opened.
+        if (entity != null && !level.isClientSide) {
+            this.lightData.set(Mth.clamp(entity.getLightLevel(), 0, 15));
+            this.torches.setItem(0, new ItemStack(Items.TORCH, this.lightData.get()));
+        }
+
         this.moduleSlot = new ModuleSlot(module, 0, MODULE_X[MODE_NONE], MODULE_Y[MODE_NONE]);
+        this.torchSlot = new TorchSlot(torches, 0, TORCH_X[MODE_NONE], TORCH_Y[MODE_NONE]);
         addSlot(this.moduleSlot);
+        addSlot(this.torchSlot);
 
         this.crafting = new TransientCraftingContainer(this, 3, 3);
         for (int row = 0; row < 3; row++) {
@@ -138,22 +158,50 @@ public class RollingLightMenu extends AbstractContainerMenu {
         return modeData.get();
     }
 
-    /** Rebuilds the module slot on the cell drawn in the current mode's texture. */
-    public void updateModuleSlotPosition() {
+    /**
+     * Rebuilds the module and torch slots on the cells drawn in the current mode's texture.
+     * Slot.x/y are final, so the slots are replaced rather than moved; keeping them at index 0
+     * and 1 preserves the indices used by quick-move logic.
+     */
+    public void updateSpecialSlots() {
         int mode = modeData.get();
         if (mode < 0 || mode >= MODULE_X.length) {
             mode = MODE_NONE;
         }
-        int x = MODULE_X[mode];
-        int y = MODULE_Y[mode];
-        if (this.moduleSlot != null && this.moduleSlot.x == x && this.moduleSlot.y == y) {
+        int mx = MODULE_X[mode];
+        int my = MODULE_Y[mode];
+        int tx = TORCH_X[mode];
+        int ty = TORCH_Y[mode];
+        if (this.moduleSlot != null && this.torchSlot != null
+                && this.moduleSlot.x == mx && this.moduleSlot.y == my
+                && this.torchSlot.x == tx && this.torchSlot.y == ty) {
             return;
         }
-        if (!this.slots.isEmpty() && this.slots.get(0) == this.moduleSlot) {
-            this.slots.remove(0);
-        }
-        this.moduleSlot = new ModuleSlot(this.module, 0, x, y);
+        this.slots.removeIf(slot -> slot == this.moduleSlot || slot == this.torchSlot);
+        this.torchSlot = new TorchSlot(this.torches, 0, tx, ty);
+        this.moduleSlot = new ModuleSlot(this.module, 0, mx, my);
+        this.slots.add(0, this.torchSlot);
         this.slots.add(0, this.moduleSlot);
+    }
+
+    public boolean isTorchSlot(Slot slot) {
+        return slot != null && slot == this.torchSlot;
+    }
+
+    /** Number of torches installed in the cube, which is also its real block light level. */
+    public int getLightLevel() {
+        return Mth.clamp(this.lightData.get(), 0, 15);
+    }
+
+    private void setTorchLevel(int level) {
+        int clamped = Mth.clamp(level, 0, 15);
+        if (this.lightData.get() == clamped) {
+            return;
+        }
+        this.lightData.set(clamped);
+        if (this.entity != null && !this.level.isClientSide) {
+            this.entity.setLightLevel(clamped);
+        }
     }
 
     public int getSmeltProgress() {
@@ -186,7 +234,7 @@ public class RollingLightMenu extends AbstractContainerMenu {
         if (mode != modeData.get()) {
             modeData.set(mode);
         }
-        updateModuleSlotPosition();
+        updateSpecialSlots();
         if (mode == MODE_CRAFTING && !level.isClientSide) {
             updateCraftResult();
         }
@@ -314,7 +362,11 @@ public class RollingLightMenu extends AbstractContainerMenu {
         ItemStack original = stack.copy();
         int mode = modeData.get();
 
-        if (index == CRAFT_RESULT) {
+        if (index == TORCH_SLOT) {
+            if (!moveItemStackTo(stack, INV_START, INV_END, false)) {
+                return ItemStack.EMPTY;
+            }
+        } else if (index == CRAFT_RESULT) {
             if (!moveItemStackTo(stack, INV_START, INV_END, false)) {
                 return ItemStack.EMPTY;
             }
@@ -344,7 +396,9 @@ public class RollingLightMenu extends AbstractContainerMenu {
                     end = MODULE_SLOT + 1;
                 }
             }
-            if (!moveItemStackTo(stack, start, end, false)) {
+            boolean movedToTorch = stack.getItem() == Items.TORCH
+                    && moveItemStackTo(stack, TORCH_SLOT, TORCH_SLOT + 1, false);
+            if (!movedToTorch && !moveItemStackTo(stack, start, end, false)) {
                 return ItemStack.EMPTY;
             }
         }
@@ -376,6 +430,83 @@ public class RollingLightMenu extends AbstractContainerMenu {
                 }
                 container.setItem(i, ItemStack.EMPTY);
             }
+        }
+    }
+
+    /**
+     * The cube's one persistent torch slot. Its count is mirrored into {@link #lightData} and
+     * into the entity's NBT, so the light stays with the cube after the GUI is closed.
+     */
+    private class TorchContainer extends SimpleContainer {
+        private ItemStack stack = ItemStack.EMPTY;
+
+        TorchContainer() {
+            super(1);
+        }
+
+        @Override
+        public ItemStack getItem(int index) {
+            return stack;
+        }
+
+        @Override
+        public ItemStack removeItem(int index, int count) {
+            if (stack.isEmpty()) {
+                return ItemStack.EMPTY;
+            }
+            ItemStack taken = stack.split(Math.min(count, stack.getCount()));
+            setChanged();
+            return taken;
+        }
+
+        @Override
+        public ItemStack removeItemNoUpdate(int index) {
+            ItemStack taken = stack;
+            stack = ItemStack.EMPTY;
+            setTorchLevel(0);
+            return taken;
+        }
+
+        @Override
+        public void setItem(int index, ItemStack incoming) {
+            int level = incoming.isEmpty() || incoming.getItem() != Items.TORCH
+                    ? 0 : Mth.clamp(incoming.getCount(), 0, 15);
+            stack = level == 0 ? ItemStack.EMPTY : new ItemStack(Items.TORCH, level);
+            setTorchLevel(level);
+        }
+
+        @Override
+        public int getMaxStackSize() {
+            return 15;
+        }
+
+        @Override
+        public void setChanged() {
+            int level = stack.isEmpty() || stack.getItem() != Items.TORCH
+                    ? 0 : Mth.clamp(stack.getCount(), 0, 15);
+            setTorchLevel(level);
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return stack.isEmpty();
+        }
+
+        @Override
+        public void clearContent() {
+            stack = ItemStack.EMPTY;
+            setTorchLevel(0);
+        }
+    }
+
+    private class TorchSlot extends Slot {
+        TorchSlot(Container container, int index, int x, int y) {
+            super(container, index, x, y);
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return stack.getItem() == Items.TORCH && super.mayPlace(stack);
         }
     }
 

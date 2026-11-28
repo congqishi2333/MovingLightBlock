@@ -113,7 +113,7 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
                 this.imageWidth, this.imageHeight);
 
         drawButtonHover(guiGraphics, mouseX - this.leftPos, mouseY - this.topPos);
-        menu.updateModuleSlotPosition();
+        menu.updateSpecialSlots();
         drawProgress(guiGraphics);
         renderModel(guiGraphics, partialTick);
 
@@ -167,5 +167,14 @@ public class RollingLightScreen extends AbstractContainerScreen<RollingLightMenu
     @Override
     protected void renderLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         guiGraphics.drawString(this.font, this.title, this.titleLabelX, this.titleLabelY, 0x404040, false);
+    }
+
+    @Override
+    protected void renderTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        super.renderTooltip(guiGraphics, mouseX, mouseY);
+        if (menu.isTorchSlot(this.hoveredSlot)) {
+            guiGraphics.renderTooltip(this.font, Component.translatable(
+                    "gui.movinglightblock.torch", menu.getLightLevel(), 15), mouseX, mouseY);
+        }
     }
 }

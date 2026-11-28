@@ -50,10 +50,12 @@ public final class Config {
                 .define("retractKey", "shift+right");
 
         LIGHT_LEVEL = builder
-                .comment("Real light level emitted by the block, from 0 (dark) to 15 (glowstone).",
-                         "Changing this value updates already-placed blocks on config reload.")
+                .comment("Initial light level of a newly summoned cube, from 0 (dark) to 15.",
+                         "The cube has no light by default; put torches in its right-hand GUI slot",
+                         "to raise the level by one per torch, up to 15. The GUI value is saved",
+                         "with the cube and overrides this config after summoning.")
                 .translation("movinglightblock.configuration.lightLevel")
-                .defineInRange("lightLevel", 15, 0, 15);
+                .defineInRange("lightLevel", 0, 0, 15);
 
         Y_OFFSET = builder
                 .comment("Vertical offset from the player's feet block where the light is placed.",

@@ -66,6 +66,8 @@ public class RollingLightEntity extends Entity implements MenuProvider {
     private Vec3 lastPlayerTarget;
     private double travelSinceIdle;
     private int stuckTicks;
+    /** Real block light level, 0..15. Set by the torches in the cube's GUI and saved in NBT. */
+    private int lightLevel = Config.LIGHT_LEVEL.get();
 
     public RollingLightEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -142,6 +144,15 @@ public class RollingLightEntity extends Entity implements MenuProvider {
 
     public boolean isAnimationEnabled() {
         return this.entityData.get(ANIMATION);
+    }
+
+    /** Real block light emitted by this cube's hidden light source. */
+    public int getLightLevel() {
+        return this.lightLevel;
+    }
+
+    public void setLightLevel(int level) {
+        this.lightLevel = Mth.clamp(level, 0, 15);
     }
 
     public void stopFollowing() {
@@ -338,6 +349,9 @@ public class RollingLightEntity extends Entity implements MenuProvider {
         if (compound.hasUUID("Owner")) {
             this.setOwner(compound.getUUID("Owner"));
         }
+        if (compound.contains("LightLevel")) {
+            this.lightLevel = Mth.clamp(compound.getInt("LightLevel"), 0, 15);
+        }
         // Entities loaded from the world save are not created by FollowLightItem, so they
         // must be re-registered or the follower would never place their hidden light again.
         if (!this.level().isClientSide) {
@@ -350,5 +364,6 @@ public class RollingLightEntity extends Entity implements MenuProvider {
         if (this.owner != null) {
             compound.putUUID("Owner", this.owner);
         }
+        compound.putInt("LightLevel", this.lightLevel);
     }
 }
