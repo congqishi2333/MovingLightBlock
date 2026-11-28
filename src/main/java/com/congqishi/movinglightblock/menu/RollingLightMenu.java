@@ -276,7 +276,12 @@ public class RollingLightMenu extends AbstractContainerMenu {
                                       StackSource source) {
         ListTag list = new ListTag();
         for (int i = 0; i < size; i++) {
-            list.add(source.get(i).save(registries, new CompoundTag()));
+            ItemStack stack = source.get(i);
+            // ItemStack.save() throws on EMPTY, while an empty compound is the correct
+            // sentinel for an empty slot and is restored by loadStacks() as EMPTY.
+            list.add(stack.isEmpty()
+                    ? new CompoundTag()
+                    : stack.save(registries, new CompoundTag()));
         }
         return list;
     }
