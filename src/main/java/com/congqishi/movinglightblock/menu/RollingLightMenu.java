@@ -779,27 +779,5 @@ public class RollingLightMenu extends AbstractContainerMenu {
         public boolean mayPickup(Player player) {
             return isActive() && super.mayPickup(player);
         }
-
-        /**
-         * Vanilla only consumes one item from each used input slot. This compact cube behaves
-         * like a one-shot bench: once the output is taken, every remaining input is emptied.
-         * Leftovers are returned to the player (or dropped) so nothing is destroyed.
-         */
-        @Override
-        public void onTake(Player player, ItemStack stack) {
-            super.onTake(player, stack);
-            for (int i = 0; i < crafting.getContainerSize(); i++) {
-                ItemStack leftover = crafting.getItem(i);
-                if (leftover.isEmpty()) {
-                    continue;
-                }
-                crafting.setItem(i, ItemStack.EMPTY);
-                if (!player.getInventory().add(leftover)) {
-                    player.drop(leftover, false);
-                }
-            }
-            // TransientCraftingContainer#setChanged is a no-op; notify the menu explicitly.
-            slotsChanged(crafting);
-        }
     }
 }
